@@ -1,10 +1,7 @@
 use std::{fmt::Error, io::Write, net::TcpStream};
 
 pub fn base_handler(response: &mut Response) {
-    response.status_code = 200;
-
     //response.headers = format!("HTTP/1.1 {} OK\nContent-Length: {}\nContent-Type: text/plain\nHost: localhost:8080\nUser-Agent: xfxWeb",response.status_code,response.body.len());
-
     response.send_text("Deneme".to_string());
     response.pack_response();
 }
@@ -167,6 +164,23 @@ impl ContentType {
 }
 
 #[derive(Debug)]
+enum StatusCode {
+    Ok,
+    NotFound,
+    BadRequest,
+}
+impl StatusCode {
+    fn get(status_code: StatusCode) -> u16 {
+        match status_code {
+            StatusCode::Ok => 200,
+            StatusCode::NotFound => 404,
+            StatusCode::BadRequest => 401,
+            _ => 200,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Response {
     status_code: u16,
     content_type: ContentType,
@@ -207,13 +221,20 @@ impl Response {
     }
     pub fn send_text(&mut self, text: String) {
         self.set_content_type(ContentType::Text);
+        self.set_status_code(StatusCode::Ok);
         self.body = text;
     }
 
     pub fn set_content_type(&mut self, content_type: ContentType) {
         let content_type_string = ContentType::get(content_type).to_string();
         self.headers
-            .push(("Content-Type: ".to_string(), content_type_string))
+            .push(("Content-Type".to_string(), content_type_string))
+    }
+    pub fn set_status_code(&mut self, status_code: StatusCode) {
+        self.status_code = StatusCode::get(status_code);
+    }
+    pub fn set_status_code_raw(&mut self, status_code: u16) {
+        self.status_code = status_code;
     }
 }
 
