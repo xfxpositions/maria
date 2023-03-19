@@ -2,6 +2,12 @@ pub fn parse_route(request: String, routes: Vec<&str>) -> String {
     let first_line = request.lines().next().unwrap();
     let mut parts = first_line.splitn(3, ' ');
 
+    #[derive(Debug)]
+    struct Route {
+        method: String,
+        path: String,
+    }
+
     let http_method = parts.next().unwrap();
     let path = parts.next().unwrap();
     let route = Route {

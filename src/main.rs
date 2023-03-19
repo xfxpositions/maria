@@ -2,17 +2,14 @@ use std::{
     io::{BufRead, Read, Write},
     net::{TcpListener, TcpStream},
 };
+mod parse_route;
+mod router;
 
 fn main() {
     println!("Hello, world!");
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
     for stream in listener.incoming() {
         handle_client(stream.unwrap());
-    }
-    #[derive(Debug)]
-    struct Route {
-        method: String,
-        path: String,
     }
 
     fn handle_client(mut stream: TcpStream) {
