@@ -52,7 +52,6 @@ pub struct Handler {
 pub struct Route {
     pub path: String,
     pub method: String,
-    pub response: Response,
 }
 impl Route {
     // pub fn new(path: &str, method: &str, request: Request, response: Response) -> Self {}

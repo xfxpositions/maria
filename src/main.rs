@@ -1,5 +1,5 @@
 use std::{
-    io::{Read, Write},
+    io::Read,
     net::{TcpListener, TcpStream},
 };
 mod parse_route;
@@ -9,6 +9,7 @@ mod router;
 mod types;
 use request::{parse_headers, Request};
 use router::{Response, Route, Router};
+use types::http_methods::HttpMethod;
 
 fn main() {
     println!("Hello, world!");
@@ -19,9 +20,8 @@ fn main() {
 
     fn handle_client(mut stream: TcpStream) {
         let routes: Vec<Route> = vec![Route {
-            method: "GET".to_string(),
+            method: HttpMethod::get(HttpMethod::GET),
             path: "/hello".to_string(),
-            response: Response::new(),
         }];
 
         let mut router: Router = Router { routes };
