@@ -1,27 +1,35 @@
-use std::net::TcpStream;
+use std::{fmt::Error, io::Write, net::TcpStream};
 
-pub fn base_handler(route: &mut Route) {
-    route.response.headers = String::from("Content-Type: text/plain");
-    route.response.status_code = 200;
-    route.response.body = String::from("hello world");
+pub fn base_handler(response: &mut Response) {
+    response.status_code = 200;
+
+    //response.headers = format!("HTTP/1.1 {} OK\nContent-Length: {}\nContent-Type: text/plain\nHost: localhost:8080\nUser-Agent: xfxWeb",response.status_code,response.body.len());
+
+    response.send_text("Deneme".to_string());
+    response.pack_response();
 }
-pub fn not_found_handler(route: &mut Route) {
-    route.response.headers = String::from("Content-Type: text/plain");
-    route.response.status_code = 404;
-    route.response.body = String::from("page not found");
+pub fn not_found_handler(response: &mut Response) {
+    //response.headers = String::from("Content-Type: text/plain");
+    response.headers = vec![("Content-Type".to_string(), "text/plain".to_string())];
+    response.status_code = 404;
+    response.body = String::from("page not found");
 }
 pub struct Router {
     pub routes: Vec<Route>,
 }
 impl Router {
-    pub fn handle_request(&mut self, request: Request) {
-        for mut route in self.routes.iter_mut() {
+    pub fn handle_request(&mut self, request: Request, mut stream: TcpStream) {
+        let mut response: Response = Response::new();
+        for route in self.routes.iter_mut() {
             if request.path == route.path {
-                base_handler(route);
+                base_handler(&mut response);
             } else {
-                not_found_handler(route);
+                base_handler(&mut response);
             }
         }
+        stream.write(response.raw_string.as_bytes());
+        stream.flush();
+        println!("HOCAM HOCAM HOCAM \n{:?}", response);
     }
 }
 pub struct Handler {
@@ -50,6 +58,27 @@ impl Request {
             body: body,
             raw_string: request_string,
         };
+    }
+    pub fn pack_response(response: &mut Response) {
+        let headers_str = response
+            .headers
+            .iter()
+            .map(|(name, value)| format!("{}: {}", name, value))
+            .collect::<Vec<String>>()
+            .join("\r\n");
+
+        let response_str = format!(
+            "HTTP/1.1 {} {}\r\n{}\r\n\r\n{}",
+            response.status_code,
+            match response.status_code {
+                200 => "OK",
+                404 => "Not Found",
+                _ => "Unknown",
+            },
+            headers_str,
+            response.body
+        );
+        response.raw_string = response_str;
     }
 }
 
@@ -119,18 +148,72 @@ pub fn parse_headers(
     ));
 }
 
+#[derive(Debug)]
+enum ContentType {
+    Html,
+    Json,
+    Text,
+    Unknown,
+}
+impl ContentType {
+    fn get(content_type: ContentType) -> String {
+        match content_type {
+            ContentType::Html => "text/html".to_string(),
+            ContentType::Json => "application/json".to_string(),
+            ContentType::Text => "text/plain".to_string(),
+            _ => "unknown".to_string(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Response {
     status_code: u16,
-    headers: String,
+    content_type: ContentType,
+    headers: Vec<(String, String)>,
     body: String,
+    raw_string: String,
 }
 impl Response {
     pub fn new() -> Response {
         return Response {
             status_code: 0u16,
-            headers: String::new(),
+            content_type: ContentType::Unknown,
+            headers: vec![],
             body: String::new(),
+            raw_string: String::new(),
         };
+    }
+    pub fn pack_response(&mut self) {
+        let headers_str = self
+            .headers
+            .iter()
+            .map(|(name, value)| format!("{}: {}", name, value))
+            .collect::<Vec<String>>()
+            .join("\r\n");
+
+        let response_str = format!(
+            "HTTP/1.1 {} {}\r\n{}\r\n\r\n{}",
+            self.status_code,
+            match self.status_code {
+                200 => "OK",
+                404 => "Not Found",
+                _ => "Unknown",
+            },
+            headers_str,
+            self.body
+        );
+        self.raw_string = response_str;
+    }
+    pub fn send_text(&mut self, text: String) {
+        self.set_content_type(ContentType::Text);
+        self.body = text;
+    }
+
+    pub fn set_content_type(&mut self, content_type: ContentType) {
+        let content_type_string = ContentType::get(content_type).to_string();
+        self.headers
+            .push(("Content-Type: ".to_string(), content_type_string))
     }
 }
 
