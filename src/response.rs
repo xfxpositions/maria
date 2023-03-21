@@ -53,6 +53,7 @@ impl Response {
         }
         self.set_content_type(ContentType::Text);
         self.body = text;
+        self.pack_response();
     }
     pub fn send_json(&mut self, json: String) {
         if(self.status_code == 0){
