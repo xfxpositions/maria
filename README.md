@@ -4,7 +4,7 @@
 ## what it includes?
 - [x] Router
 - [x] Json handle
-- [ ] Handler
+- [x] Handler
 - [ ] Traits
 - [ ] Multithreading
 
