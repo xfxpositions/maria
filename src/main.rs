@@ -28,7 +28,9 @@ fn main() {
         let mut buffer = [0; 1024];
         stream.read(&mut buffer).unwrap();
         let request_string = String::from_utf8_lossy(&mut buffer[..]);
+        println!("{request_string}");
         let request = Request::new(request_string.to_string());
+
         router.handle_request(request, stream);
         // println!(
         //     "First Line: method:{},path:{},version{}",

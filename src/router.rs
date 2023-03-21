@@ -17,7 +17,7 @@ pub fn json_handler(response: &mut Response) {
         "city": "New York"
     }
     "#;
-
+    response.set_status_code_raw(201);
     response.send_json(json_string.to_string());
 }
 pub fn not_found_handler(response: &mut Response) {
