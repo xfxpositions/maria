@@ -30,7 +30,16 @@ impl Response {
             self.status_code,
             match self.status_code {
                 200 => "OK",
+                201 => "Created",
+                202 => "Accepted",
+                203..=230 => "Success",
+                401 => "Unauthorized",
+                402 => "Payment Required",
+                403 => "Forbidden",
                 404 => "Not Found",
+                405..=440 => "Client Error",
+                500 => "Internal Server Error",
+                503 => "Unavaible",
                 _ => "Unknown",
             },
             headers_str,
@@ -39,19 +48,26 @@ impl Response {
         self.raw_string = response_str;
     }
     pub fn send_text(&mut self, text: String) {
+        if(self.status_code == 0){
+            self.set_status_code(StatusCode::Ok);
+        }
         self.set_content_type(ContentType::Text);
-        self.set_status_code(StatusCode::Ok);
         self.body = text;
+        self.pack_response();
     }
     pub fn send_json(&mut self, json: String) {
+        if(self.status_code == 0){
+            self.set_status_code(StatusCode::Ok);
+        }
         self.set_content_type(ContentType::Json);
-        self.set_status_code(StatusCode::Ok);
         self.body = json;
         self.pack_response();
     }
     pub fn send_html(&mut self, html: String) {
+        if(self.status_code == 0){
+            self.set_status_code(StatusCode::Ok);
+        }
         self.set_content_type(ContentType::Html);
-        self.set_status_code(StatusCode::Ok);
         self.body = html;
         self.pack_response();
     }

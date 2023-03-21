@@ -8,8 +8,9 @@ mod response;
 mod router;
 mod types;
 use request::{parse_headers, Request};
-use router::{Response, Route, Router};
+use router::{Response, Route, Router,Handler};
 use types::http_methods::HttpMethod;
+
 
 fn main() {
     println!("Hello, world!");
@@ -19,17 +20,25 @@ fn main() {
     }
 
     fn handle_client(mut stream: TcpStream) {
+        fn handler1(req:&mut Request,res:&mut Response){
+            res.set_status_code_raw(200);
+            res.send_text("qweqwe".to_string());
+        }
         let routes: Vec<Route> = vec![Route {
             method: HttpMethod::get(HttpMethod::GET),
             path: "/hello".to_string(),
+            handler: handler1.clone()
         }];
-
         let mut router: Router = Router { routes };
+        router.add_get("/oo", handler1.clone());
+         
         let mut buffer = [0; 1024];
         stream.read(&mut buffer).unwrap();
         let request_string = String::from_utf8_lossy(&mut buffer[..]);
-        let request = Request::new(request_string.to_string());
-        router.handle_request(request, stream);
+        println!("{request_string}");
+        let mut request = Request::new(request_string.to_string());
+
+        router.handle_request(&mut request, stream);
         // println!(
         //     "First Line: method:{},path:{},version{}",
         //     first_line.0, first_line.1, first_line.2
