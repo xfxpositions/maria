@@ -36,14 +36,20 @@ impl Router {
         Router { routes: routes }
     }
     pub fn listen(&mut self,port:u32){    
-        let hostname = format!("127.0.0.1:{}",port.to_string());
-        let listener = TcpListener::bind(hostname).unwrap();
         
-        for stream in listener.incoming() {
-            self.handle_request(&mut stream.unwrap());    
-        }
-
-    }
+            let hostname = format!("127.0.0.1:{}",port.to_string());
+            let listener = TcpListener::bind(hostname);
+            match listener {
+                Ok(listener)=>{
+                    for stream in listener.incoming() {
+                        self.handle_request(&mut stream.unwrap());    
+                    }
+                }
+                Err(e) => panic!("Port error {:?}",e),
+                }
+            }
+            
+    
     pub fn handle_request(&mut self, stream: &mut TcpStream) {
         let mut request = parse_buffer(stream);
         let mut response: Response = Response::new();
@@ -105,7 +111,6 @@ pub struct Route {
 }
 impl Route {
     // pub fn new(path: &str, method: &str, request: Request, response: Response) -> Self {}
-    pub fn start_handling(&self) {}
     pub fn get(path:&str,handler:Handler)->Route{
         Route { path: path.to_string(), method: HttpMethod::GET, handler:handler}
     }
