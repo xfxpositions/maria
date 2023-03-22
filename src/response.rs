@@ -1,4 +1,4 @@
-use std::{any::Any, fs};
+use std::{any::Any, fs, path::Path};
 
 use crate::types::{content_type::ContentType, status_code::StatusCode};
 #[derive(Debug)]
@@ -95,6 +95,21 @@ impl Response {
             },
             Err(e) => {
                 self.send_text(format!("Err: can't find file {} err: {:?}",filename,e).as_str());
+            },
+        }
+    }
+    pub fn send_static_file(&mut self,path:&str){
+        let file = fs::read_to_string(path.to_string());
+        match file{
+            Ok(file) => {
+                self.send_setup();
+                self.set_content_type(ContentType::Unknown);
+                self.add_header("Content-Length", file.len().to_string().as_str());
+                self.body = file;
+                self.pack_response();
+            },
+            Err(e) => {
+                self.send_text(format!("Err: can't find file {} err: {:?}",path,e).as_str());
             },
         }
     }

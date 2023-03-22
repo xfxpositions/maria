@@ -1,9 +1,8 @@
 pub(crate) use crate::request::Request;
 pub(crate) use crate::response::Response;
-pub(crate) use crate::types::content_type::ContentType;
 use crate::types::http_methods::HttpMethod;
 pub(crate) use crate::types::status_code::StatusCode;
-use std::{fmt::Error, io::{Write, Read}, net::{TcpStream, TcpListener}, os, fs, path::Path};
+use std::{io::{Write, Read}, net::{TcpStream, TcpListener}, path::Path};
 pub fn parse_buffer(stream:&mut TcpStream)->Request{
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).unwrap();
@@ -57,18 +56,16 @@ impl Router {
         let mut response: Response = Response::new(self.render_path.clone());
         let mut not_found = true;
         //first check the path is actually reffering a static file
+
         let mut is_static = false;
-        
         for dir_path in self.static_paths.iter(){
             let path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + dir_path + &request.path;
             let file_path = Path::new(&path);
-            println!("file path: {:?}",file_path);
-            if file_path.exists(){
-                is_static = true;
-                response.send_text("static file");
-            }
+                if file_path.is_file(){
+                    is_static = true;
+                    response.send_static_file(&path);
+                }
         }
-        println!("IS STATIC {}",is_static);
         if !is_static{
             for route in self.routes.iter_mut() {
                 if request.path == route.path{
@@ -85,24 +82,20 @@ impl Router {
                     }
                 } 
             }
-    
+            //404 handler
             if not_found{
                 not_found_handler(&mut response);
             }
         }
            
-        
-           
-        
-        
         // fn write_response(stream:&mut TcpStream,response: &mut Response)->Result<(),(String)>{
         //     stream.write(response.raw_string.as_bytes()).expect_err("can't write stream");
         //     stream.flush().expect_err("can't flush stream");
         //     Ok(())
         // }
 
-        stream.write(response.raw_string.as_bytes());
-        stream.flush();
+        stream.write(response.raw_string.as_bytes()).unwrap();
+        stream.flush().unwrap();
 
         println!("HOCAM HOCAM HOCAM \n{:?}", response);
     }
