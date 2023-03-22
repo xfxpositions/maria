@@ -1,3 +1,5 @@
+use crate::types::http_methods::HttpMethod;
+
 pub fn parse_headers(
     request_string: String,
 ) -> Result<
@@ -66,8 +68,8 @@ pub fn parse_headers(
 
 #[derive(Debug)]
 pub struct Request {
-    method: String,
     pub path: String,
+    pub method: HttpMethod,
     version: String,
     headers: Vec<(String, String)>,
     headers_raw: String,
@@ -79,7 +81,7 @@ impl Request {
         let (first_line, headers, headers_str, body) =
             parse_headers(request_string.to_string()).unwrap();
         return Request {
-            method: first_line.0,
+            method: HttpMethod::from_string(first_line.0.as_str()),
             path: first_line.1,
             version: first_line.2,
             headers: headers,

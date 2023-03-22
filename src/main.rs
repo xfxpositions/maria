@@ -1,50 +1,39 @@
-use std::{
-    io::Read,
-    net::{TcpListener, TcpStream},
-};
 mod parse_route;
 mod request;
 mod response;
 mod router;
 mod types;
-use request::{parse_headers, Request};
-use router::{Response, Route, Router,Handler};
-use types::http_methods::HttpMethod;
+use request::{Request};
+use router::{Response, Router};
 
 
 fn main() {
     println!("Hello, world!");
-    let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
-    for stream in listener.incoming() {
-        handle_client(stream.unwrap());
-    }
+    //creating router
+    let mut router = Router::new();
 
-    fn handle_client(mut stream: TcpStream) {
-        fn handler1(req:&mut Request,res:&mut Response){
-            res.set_status_code_raw(200);
-            res.send_text("qweqwe".to_string());
-        }
-        let routes: Vec<Route> = vec![Route {
-            method: HttpMethod::get(HttpMethod::GET),
-            path: "/hello".to_string(),
-            handler: handler1.clone()
-        }];
-        let mut router: Router = Router { routes };
-        router.add_get("/oo", handler1.clone());
-         
-        let mut buffer = [0; 1024];
-        stream.read(&mut buffer).unwrap();
-        let request_string = String::from_utf8_lossy(&mut buffer[..]);
-        println!("{request_string}");
-        let mut request = Request::new(request_string.to_string());
-
-        router.handle_request(&mut request, stream);
-        // println!(
-        //     "First Line: method:{},path:{},version{}",
-        //     first_line.0, first_line.1, first_line.2
-        // );
-        // println!("Headers: {:?}", headers);
-        // println!("Body: {}", body);
-        // println!("Incoming request");
+    //adding route to router
+    fn handler1(_req:&mut Request,res:&mut Response){
+        res.send_text("qweqwe");
     }
+    
+    router.get("/deneme",handler1);
+
+    //add another route to router   
+    fn handler2(_req:&mut Request, res:&mut Response){
+        res.send_text("deneme");
+    }
+    router.get("/oo", handler2);
+    router.get("/qwe", handler2.clone());
+
+    //post handler example
+    fn post_handler(req:&mut Request,res:&mut Response){
+        res.set_status_code_raw(200);
+        println!("request is => {:?}",req);
+        res.send_text("post example");
+    }
+    router.post("/examplepost",post_handler);
+
+
+    router.listen(8080);
 }
