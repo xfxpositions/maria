@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::types::{content_type::ContentType, status_code::StatusCode};
 #[derive(Debug)]
 pub struct Response {
@@ -16,6 +18,9 @@ impl Response {
             body: String::new(),
             raw_string: String::new(),
         };
+    }
+    pub fn add_header(&mut self, key:&str,value:&str){
+        self.headers.push((key.to_string(),value.to_string()));
     }
     pub fn pack_response(&mut self) {
         let headers_str = self
@@ -47,26 +52,29 @@ impl Response {
         );
         self.raw_string = response_str;
     }
-    pub fn send_text(&mut self, text: String) {
+    pub fn send_setup(&mut self){
         if(self.status_code == 0){
             self.set_status_code(StatusCode::Ok);
         }
+        self.add_header("powered-by", "maria.rs")
+    }
+    pub fn send_text(&mut self, text: &str) {
+        self.send_setup();
+        self.add_header("Content-Length",text.len().to_string().as_str());
         self.set_content_type(ContentType::Text);
-        self.body = text;
+        self.body = text.to_string();
         self.pack_response();
     }
     pub fn send_json(&mut self, json: String) {
-        if(self.status_code == 0){
-            self.set_status_code(StatusCode::Ok);
-        }
+        self.send_setup();
+        self.add_header("Content-Length",json.len().to_string().as_str());
         self.set_content_type(ContentType::Json);
         self.body = json;
         self.pack_response();
     }
     pub fn send_html(&mut self, html: String) {
-        if(self.status_code == 0){
-            self.set_status_code(StatusCode::Ok);
-        }
+        self.send_setup();
+        self.add_header("Content-Length",html.len().to_string().as_str());
         self.set_content_type(ContentType::Html);
         self.body = html;
         self.pack_response();

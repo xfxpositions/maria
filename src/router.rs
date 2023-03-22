@@ -24,7 +24,7 @@ pub fn json_handler(response: &mut Response) {
 }
 pub fn not_found_handler(response: &mut Response) {
     response.set_status_code(StatusCode::NotFound);
-    response.send_text("Not found".to_string());
+    response.send_text("Not found");
 }
 pub struct Router {
     pub routes: Vec<Route>,
