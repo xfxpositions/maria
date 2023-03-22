@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::{any::Any, fs, path::Path};
 
 use crate::types::{content_type::ContentType, status_code::StatusCode};
 #[derive(Debug)]
@@ -8,15 +8,17 @@ pub struct Response {
     pub headers: Vec<(String, String)>,
     pub body: String,
     pub raw_string: String,
+    render_path: String
 }
 impl Response {
-    pub fn new() -> Response {
+    pub fn new(render_path:String) -> Response {
         return Response {
             status_code: 0u16,
             content_type: ContentType::Unknown,
             headers: vec![],
             body: String::new(),
             raw_string: String::new(),
+            render_path:render_path
         };
     }
     pub fn add_header(&mut self, key:&str,value:&str){
@@ -52,7 +54,7 @@ impl Response {
         );
         self.raw_string = response_str;
     }
-    pub fn send_setup(&mut self){
+    fn send_setup(&mut self){
         if(self.status_code == 0){
             self.set_status_code(StatusCode::Ok);
         }
@@ -72,12 +74,44 @@ impl Response {
         self.body = json;
         self.pack_response();
     }
-    pub fn send_html(&mut self, html: String) {
+    pub fn send_html(&mut self, html: &str) {
         self.send_setup();
         self.add_header("Content-Length",html.len().to_string().as_str());
         self.set_content_type(ContentType::Html);
-        self.body = html;
+        self.body = html.to_string();
         self.pack_response();
+    }
+    pub fn send_file(&mut self, filename:&str){
+        let base_path = std::env::current_dir().unwrap().to_str().unwrap().to_owned()+self.render_path.as_str();
+        let file = fs::read_to_string(base_path + filename);
+        println!("{}", std::env::current_dir().unwrap().display());
+        match file{
+            Ok(file) => {
+                self.send_setup();
+                self.set_content_type(ContentType::Html);
+                self.add_header("Content-Length", file.len().to_string().as_str());
+                self.body = file;
+                self.pack_response();
+            },
+            Err(e) => {
+                self.send_text(format!("Err: can't find file {} err: {:?}",filename,e).as_str());
+            },
+        }
+    }
+    pub fn send_static_file(&mut self,path:&str){
+        let file = fs::read_to_string(path.to_string());
+        match file{
+            Ok(file) => {
+                self.send_setup();
+                self.set_content_type(ContentType::Unknown);
+                self.add_header("Content-Length", file.len().to_string().as_str());
+                self.body = file;
+                self.pack_response();
+            },
+            Err(e) => {
+                self.send_text(format!("Err: can't find file {} err: {:?}",path,e).as_str());
+            },
+        }
     }
     pub fn set_content_type(&mut self, content_type: ContentType) {
         let content_type_string = ContentType::get(content_type).to_string();

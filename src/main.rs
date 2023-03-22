@@ -14,17 +14,19 @@ fn main() {
 
     //adding route to router
     fn handler1(_req:&mut Request,res:&mut Response){
-        res.send_text("qweqwe");
+        res.send_file("index.html");
     }
-    
-    router.get("/deneme",handler1);
+    router.get("/",handler1);
+
+    //add static serve path
+    router.add_static_path("/src/static");
 
     //add another route to router   
     fn handler2(_req:&mut Request, res:&mut Response){
         res.send_text("deneme");
     }
-    router.get("/oo", handler2);
-    router.get("/qwe", handler2.clone());
+    router.get("/test", handler2);
+    router.get("/test2", handler2.clone());
 
     //post handler example
     fn post_handler(req:&mut Request,res:&mut Response){
