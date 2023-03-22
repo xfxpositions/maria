@@ -49,9 +49,18 @@ impl Router {
         let mut response: Response = Response::new();
         let mut not_found = true;
         for route in self.routes.iter_mut() {
-            if request.path == route.path {
-                not_found = false;
-                (route.handler)(&mut request,&mut response);
+            if request.path == route.path{
+                if request.method.to_string() == route.method.to_string(){
+                    not_found = false;
+                    (route.handler)(&mut request,&mut response);
+                }else{
+                    not_found = false;
+                    fn handler(request: &mut Request, response: &mut Response){
+                        let body = format!("No avaible path for {} method, you can try another methods",request.method.to_string());
+                        response.send_text(body.as_str());
+                    }
+                    handler(&mut request,&mut response);
+                }
             } 
         }
         if not_found{
@@ -69,20 +78,20 @@ impl Router {
         println!("HOCAM HOCAM HOCAM \n{:?}", response);
     }
     pub fn get(&mut self,path:&str,handler:Handler){
-        let route = Route { path: path.to_string(), method: HttpMethod::get(HttpMethod::GET),handler:handler};
-        println!("route = {},{}",route.method,route.path);
+        let route = Route { path: path.to_string(), method: HttpMethod::GET ,handler:handler};
+        println!("route = {},{}",route.method.to_string(),route.path);
         self.routes.push(route);
     }
     pub fn post(&mut self,path:&str,handler:Handler){
-        let route = Route { path: path.to_string(), method: HttpMethod::get(HttpMethod::POST),handler:handler};
+        let route = Route { path: path.to_string(), method: HttpMethod::POST ,handler:handler};
         self.routes.push(route);
     }
     pub fn put(&mut self,path:&str,handler:Handler){
-        let route = Route { path: path.to_string(), method: HttpMethod::get(HttpMethod::PUT),handler:handler};
+        let route = Route { path: path.to_string(), method: HttpMethod::PUT ,handler:handler};
         self.routes.push(route);
     }
     pub fn delete(&mut self,path:&str,handler:Handler){
-        let route = Route { path: path.to_string(), method: HttpMethod::get(HttpMethod::DELETE),handler:handler};
+        let route = Route { path: path.to_string(), method: HttpMethod::DELETE ,handler:handler};
         self.routes.push(route);
     }
 }
@@ -91,22 +100,22 @@ pub type Handler = fn(req:&mut Request,res:&mut Response);
 
 pub struct Route {
     pub path: String,
-    pub method: String,
+    pub method: HttpMethod,
     pub handler:Handler
 }
 impl Route {
     // pub fn new(path: &str, method: &str, request: Request, response: Response) -> Self {}
     pub fn start_handling(&self) {}
     pub fn get(path:&str,handler:Handler)->Route{
-        Route { path: path.to_string(), method: HttpMethod::get(HttpMethod::GET), handler:handler}
+        Route { path: path.to_string(), method: HttpMethod::GET, handler:handler}
     }
     pub fn post(path:&str, handler:Handler)->Route{
-        Route { path: path.to_string(), method: HttpMethod::get(HttpMethod::POST), handler:handler}
+        Route { path: path.to_string(), method: HttpMethod::POST, handler:handler}
     }
     pub fn put(path:&str, handler:Handler)->Route{
-        Route { path: path.to_string(), method: HttpMethod::get(HttpMethod::PUT), handler:handler}
+        Route { path: path.to_string(), method: HttpMethod::PUT, handler:handler}
     }
     pub fn delete(path:&str, handler:Handler)->Route{
-        Route { path: path.to_string(), method: HttpMethod::get(HttpMethod::DELETE), handler:handler}
+        Route { path: path.to_string(), method: HttpMethod::DELETE, handler:handler}
     }
 }
