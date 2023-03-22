@@ -3,12 +3,13 @@ pub(crate) use crate::response::Response;
 pub(crate) use crate::types::content_type::ContentType;
 use crate::types::http_methods::HttpMethod;
 pub(crate) use crate::types::status_code::StatusCode;
-
-use std::{fmt::Error, io::Write, net::TcpStream};
-pub fn base_handler(response: &mut Response) {
-    //response.headers = format!("HTTP/1.1 {} OK\nContent-Length: {}\nContent-Type: text/plain\nHost: localhost:8080\nUser-Agent: xfxWeb",response.status_code,response.body.len());
-    response.send_text("Deneme".to_string());
-    response.pack_response();
+use std::{fmt::Error, io::{Write, Read}, net::{TcpStream, TcpListener}, os};
+pub fn parse_buffer(stream:&mut TcpStream)->Request{
+    let mut buffer = [0; 1024];
+    stream.read(&mut buffer).unwrap();
+    let request_string = String::from_utf8_lossy(&mut buffer[..]);
+    let request = Request::new(request_string.to_string());
+    return request;
 }
 pub fn json_handler(response: &mut Response) {
     let json_string = r#"
@@ -22,35 +23,52 @@ pub fn json_handler(response: &mut Response) {
     response.send_json(json_string.to_string());
 }
 pub fn not_found_handler(response: &mut Response) {
-    //response.headers = String::from("Content-Type: text/plain");
-    response.send_text("Not found".to_string());
     response.set_status_code(StatusCode::NotFound);
-    response.pack_response();
+    response.send_text("Not found".to_string());
 }
 pub struct Router {
     pub routes: Vec<Route>,
 }
 
 impl Router {
-    pub fn handle_request(&mut self, request: &mut Request, mut stream: TcpStream) {
-        println!("ROUTES LEN{}",self.routes.len());
+    pub fn new()->Router{
+        let routes :Vec<Route>= vec![];
+        Router { routes: routes }
+    }
+    pub fn listen(&mut self,port:u32){    
+        let hostname = format!("127.0.0.1:{}",port.to_string());
+        let listener = TcpListener::bind(hostname).unwrap();
+        
+        for stream in listener.incoming() {
+            self.handle_request(&mut stream.unwrap());    
+        }
+
+    }
+    pub fn handle_request(&mut self, stream: &mut TcpStream) {
+        let mut request = parse_buffer(stream);
         let mut response: Response = Response::new();
         let mut not_found = true;
         for route in self.routes.iter_mut() {
             if request.path == route.path {
                 not_found = false;
-                (route.handler)(request,&mut response);
-                //base_handler(&mut response);
+                (route.handler)(&mut request,&mut response);
             } 
         }
         if not_found{
             not_found_handler(&mut response);
         }
+        // fn write_response(stream:&mut TcpStream,response: &mut Response)->Result<(),(String)>{
+        //     stream.write(response.raw_string.as_bytes()).expect_err("can't write stream");
+        //     stream.flush().expect_err("can't flush stream");
+        //     Ok(())
+        // }
+
         stream.write(response.raw_string.as_bytes());
         stream.flush();
+
         println!("HOCAM HOCAM HOCAM \n{:?}", response);
     }
-    pub fn add_get(&mut self,path:&str,handler:Handler){
+    pub fn get(&mut self,path:&str,handler:Handler){
         let route = Route { path: path.to_string(), method: HttpMethod::get(HttpMethod::GET),handler:handler};
         println!("route = {},{}",route.method,route.path);
         self.routes.push(route);
@@ -68,10 +86,6 @@ impl Router {
         self.routes.push(route);
     }
 }
-// pub struct Handler {
-//     request: Request,
-//     response: Response,
-// }
 
 pub type Handler = fn(req:&mut Request,res:&mut Response);
 
