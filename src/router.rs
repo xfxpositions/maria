@@ -3,7 +3,7 @@ pub(crate) use crate::response::Response;
 pub(crate) use crate::types::content_type::ContentType;
 use crate::types::http_methods::HttpMethod;
 pub(crate) use crate::types::status_code::StatusCode;
-use std::{fmt::Error, io::{Write, Read}, net::{TcpStream, TcpListener}, os};
+use std::{fmt::Error, io::{Write, Read}, net::{TcpStream, TcpListener}, os, fs, path::Path};
 pub fn parse_buffer(stream:&mut TcpStream)->Request{
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).unwrap();
@@ -24,54 +24,77 @@ pub fn json_handler(response: &mut Response) {
 }
 pub fn not_found_handler(response: &mut Response) {
     response.set_status_code(StatusCode::NotFound);
-    response.send_text("Not found");
+    response.send_file("notfound.html");
 }
 pub struct Router {
     pub routes: Vec<Route>,
+    pub render_path:String,
+    pub static_paths:Vec<String>
 }
 
 impl Router {
     pub fn new()->Router{
         let routes :Vec<Route>= vec![];
-        Router { routes: routes }
+        Router { routes: routes,render_path:"/src/views/".to_string(), static_paths:vec![] }
     }
     pub fn listen(&mut self,port:u32){    
-        
             let hostname = format!("127.0.0.1:{}",port.to_string());
             let listener = TcpListener::bind(hostname);
-            match listener {
+            match
+                listener {
                 Ok(listener)=>{
                     for stream in listener.incoming() {
                         self.handle_request(&mut stream.unwrap());    
                     }
                 }
                 Err(e) => panic!("Port error {:?}",e),
-                }
+                }   
             }
             
     
     pub fn handle_request(&mut self, stream: &mut TcpStream) {
         let mut request = parse_buffer(stream);
-        let mut response: Response = Response::new();
+        let mut response: Response = Response::new(self.render_path.clone());
         let mut not_found = true;
-        for route in self.routes.iter_mut() {
-            if request.path == route.path{
-                if request.method.to_string() == route.method.to_string(){
-                    not_found = false;
-                    (route.handler)(&mut request,&mut response);
-                }else{
-                    not_found = false;
-                    fn handler(request: &mut Request, response: &mut Response){
-                        let body = format!("No avaible path for {} method, you can try another methods",request.method.to_string());
-                        response.send_text(body.as_str());
+        //first check the path is actually reffering a static file
+        let mut is_static = false;
+        
+        for dir_path in self.static_paths.iter(){
+            let path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + dir_path + &request.path;
+            let file_path = Path::new(&path);
+            println!("file path: {:?}",file_path);
+            if file_path.exists(){
+                is_static = true;
+                response.send_text("static file");
+            }
+        }
+        println!("IS STATIC {}",is_static);
+        if !is_static{
+            for route in self.routes.iter_mut() {
+                if request.path == route.path{
+                    if request.method.to_string() == route.method.to_string(){
+                        not_found = false;
+                        (route.handler)(&mut request,&mut response);
+                    }else{
+                        not_found = false;
+                        fn handler(request: &mut Request, response: &mut Response){
+                            let body = format!("No avaible path for {} method, you can try another methods",request.method.to_string());
+                            response.send_text(body.as_str());
+                        }
+                        handler(&mut request,&mut response);
                     }
-                    handler(&mut request,&mut response);
-                }
-            } 
+                } 
+            }
+    
+            if not_found{
+                not_found_handler(&mut response);
+            }
         }
-        if not_found{
-            not_found_handler(&mut response);
-        }
+           
+        
+           
+        
+        
         // fn write_response(stream:&mut TcpStream,response: &mut Response)->Result<(),(String)>{
         //     stream.write(response.raw_string.as_bytes()).expect_err("can't write stream");
         //     stream.flush().expect_err("can't flush stream");
@@ -82,6 +105,12 @@ impl Router {
         stream.flush();
 
         println!("HOCAM HOCAM HOCAM \n{:?}", response);
+    }
+    pub fn set_render_path(&mut self,path:&str){
+        self.render_path = path.to_string();
+    }
+    pub fn add_static_path(&mut self,path:&str){
+        self.static_paths.push(path.to_string());
     }
     pub fn get(&mut self,path:&str,handler:Handler){
         let route = Route { path: path.to_string(), method: HttpMethod::GET ,handler:handler};

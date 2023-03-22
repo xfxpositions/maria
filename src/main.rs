@@ -14,11 +14,12 @@ fn main() {
 
     //adding route to router
     fn handler1(_req:&mut Request,res:&mut Response){
-        res.send_text("qweqwe");
+        res.send_file("index.html");
     }
     
-    router.get("/deneme",handler1);
-
+    router.get("/",handler1);
+    router.add_static_path("/src/static");
+    router.set_render_path("/src/views/");
     //add another route to router   
     fn handler2(_req:&mut Request, res:&mut Response){
         res.send_text("deneme");
