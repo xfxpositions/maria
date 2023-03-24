@@ -70,7 +70,7 @@ impl Router {
         if !is_static{
             for route in self.routes.iter_mut() {
                 if route.path == "*" || request.path == route.path{
-                    if request.method.to_string() == route.method.to_string(){
+                    if route.method == HttpMethod::ALL || request.method == route.method{
                         not_found = false;
                         for handler in route.handlers.iter_mut(){
                             (handler)(&mut request,&mut response);
@@ -107,6 +107,11 @@ impl Router {
     }
     pub fn add_static_path(&mut self,path:&str){
         self.static_paths.push(path.to_string());
+    }
+    pub fn all(&mut self,path:&str, handlers:Vec<Handler>){
+        let route = Route { path: path.to_string(), method: HttpMethod::ALL , handlers:handlers};
+        println!("route = {},{}",route.method.to_string(),route.path);
+        self.routes.push(route);
     }
     pub fn get(&mut self,path:&str, handlers:Vec<Handler>){
         let route = Route { path: path.to_string(), method: HttpMethod::GET , handlers:handlers};
