@@ -71,7 +71,9 @@ impl Router {
                 if request.path == route.path{
                     if request.method.to_string() == route.method.to_string(){
                         not_found = false;
-                        (route.handler)(&mut request,&mut response);
+                        for handler in route.handlers.iter_mut(){
+                            (handler)(&mut request,&mut response);
+                        }
                     }else{
                         not_found = false;
                         fn handler(request: &mut Request, response: &mut Response){
@@ -105,21 +107,21 @@ impl Router {
     pub fn add_static_path(&mut self,path:&str){
         self.static_paths.push(path.to_string());
     }
-    pub fn get(&mut self,path:&str,handler:Handler){
-        let route = Route { path: path.to_string(), method: HttpMethod::GET ,handler:handler};
+    pub fn get(&mut self,path:&str, handlers:Vec<Handler>){
+        let route = Route { path: path.to_string(), method: HttpMethod::GET , handlers:handlers};
         println!("route = {},{}",route.method.to_string(),route.path);
         self.routes.push(route);
     }
-    pub fn post(&mut self,path:&str,handler:Handler){
-        let route = Route { path: path.to_string(), method: HttpMethod::POST ,handler:handler};
+    pub fn post(&mut self,path:&str, handlers:Vec<Handler>){
+        let route = Route { path: path.to_string(), method: HttpMethod::POST , handlers:handlers};
         self.routes.push(route);
     }
-    pub fn put(&mut self,path:&str,handler:Handler){
-        let route = Route { path: path.to_string(), method: HttpMethod::PUT ,handler:handler};
+    pub fn put(&mut self,path:&str, handlers:Vec<Handler>){
+        let route = Route { path: path.to_string(), method: HttpMethod::PUT , handlers:handlers};
         self.routes.push(route);
     }
-    pub fn delete(&mut self,path:&str,handler:Handler){
-        let route = Route { path: path.to_string(), method: HttpMethod::DELETE ,handler:handler};
+    pub fn delete(&mut self,path:&str, handlers:Vec<Handler>){
+        let route = Route { path: path.to_string(), method: HttpMethod::DELETE , handlers:handlers};
         self.routes.push(route);
     }
 }
@@ -129,20 +131,20 @@ pub type Handler = fn(req:&mut Request,res:&mut Response);
 pub struct Route {
     pub path: String,
     pub method: HttpMethod,
-    pub handler:Handler
+    pub handlers:Vec<Handler>
 }
 impl Route {
     // pub fn new(path: &str, method: &str, request: Request, response: Response) -> Self {}
-    pub fn get(path:&str,handler:Handler)->Route{
-        Route { path: path.to_string(), method: HttpMethod::GET, handler:handler}
+    pub fn get(path:&str, handlers:Vec<Handler>)->Route{
+        Route { path: path.to_string(), method: HttpMethod::GET,  handlers:handlers}
     }
-    pub fn post(path:&str, handler:Handler)->Route{
-        Route { path: path.to_string(), method: HttpMethod::POST, handler:handler}
+    pub fn post(path:&str, handlers:Vec<Handler>)->Route{
+        Route { path: path.to_string(), method: HttpMethod::POST,  handlers:handlers}
     }
-    pub fn put(path:&str, handler:Handler)->Route{
-        Route { path: path.to_string(), method: HttpMethod::PUT, handler:handler}
+    pub fn put(path:&str,  handlers:Vec<Handler>)->Route{
+        Route { path: path.to_string(), method: HttpMethod::PUT,  handlers:handlers}
     }
-    pub fn delete(path:&str, handler:Handler)->Route{
-        Route { path: path.to_string(), method: HttpMethod::DELETE, handler:handler}
+    pub fn delete(path:&str,  handlers:Vec<Handler>)->Route{
+        Route { path: path.to_string(), method: HttpMethod::DELETE,  handlers:handlers}
     }
 }

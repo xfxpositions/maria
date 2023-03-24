@@ -16,7 +16,10 @@ fn main() {
     fn handler1(_req:&mut Request,res:&mut Response){
         res.send_file("index.html");
     }
-    router.get("/",handler1);
+    fn set_header(_req:&mut Request,res:&mut Response){
+        res.add_header("deneme", "zibidi")
+    }
+    router.get("/",vec![set_header,handler1]);
 
     //add static serve path
     router.add_static_path("/src/static");
@@ -25,8 +28,8 @@ fn main() {
     fn handler2(_req:&mut Request, res:&mut Response){
         res.send_text("deneme");
     }
-    router.get("/test", handler2);
-    router.get("/test2", handler2.clone());
+    router.get("/test", vec![handler2]);
+    router.get("/test2", vec![handler2.clone()]);
 
     //post handler example
     fn post_handler(req:&mut Request,res:&mut Response){
@@ -34,7 +37,7 @@ fn main() {
         println!("request is => {:?}",req);
         res.send_text("post example");
     }
-    router.post("/examplepost",post_handler);
+    router.post("/examplepost",vec![post_handler]);
 
 
     router.listen(8080);
