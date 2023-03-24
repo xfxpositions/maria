@@ -55,6 +55,7 @@ impl Router {
         let mut request = parse_buffer(stream);
         let mut response: Response = Response::new(self.render_path.clone());
         let mut not_found = true;
+        
         //first check the path is actually reffering a static file
 
         let mut is_static = false;
@@ -68,7 +69,7 @@ impl Router {
         }
         if !is_static{
             for route in self.routes.iter_mut() {
-                if request.path == route.path{
+                if route.path == "*" || request.path == route.path{
                     if request.method.to_string() == route.method.to_string(){
                         not_found = false;
                         for handler in route.handlers.iter_mut(){

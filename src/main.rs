@@ -19,7 +19,7 @@ fn main() {
     fn set_header(_req:&mut Request,res:&mut Response){
         res.add_header("deneme", "zibidi")
     }
-    router.get("/",vec![set_header,handler1]);
+    router.get("*",vec![set_header,handler1]);
 
     //add static serve path
     router.add_static_path("/src/static");
