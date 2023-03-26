@@ -8,17 +8,19 @@ pub struct Response {
     pub headers: Vec<(String, String)>,
     pub body: String,
     pub raw_string: String,
-    render_path: String
+    pub static_paths: Vec<String>,
+    render_path: String,
 }
 impl Response {
-    pub fn new(render_path:String) -> Response {
+    pub fn new(render_path:String,static_paths:Vec<String>) -> Response {
         return Response {
             status_code: 0u16,
             content_type: ContentType::Unknown,
             headers: vec![],
             body: String::new(),
             raw_string: String::new(),
-            render_path:render_path
+            static_paths:static_paths,
+            render_path:render_path,
         };
     }
     pub fn add_header(&mut self, key:&str,value:&str){

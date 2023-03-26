@@ -53,7 +53,7 @@ impl Router {
     
     pub fn handle_request(&mut self, stream: &mut TcpStream) {
         let mut request = parse_buffer(stream);
-        let mut response: Response = Response::new(self.render_path.clone());
+        let mut response: Response = Response::new(self.render_path.clone(),self.static_paths.clone());
         let mut not_found = true;
         
         //first check the path is actually reffering a static file
@@ -130,8 +130,24 @@ impl Router {
         let route = Route { path: path.to_string(), method: HttpMethod::DELETE , handlers:handlers};
         self.routes.push(route);
     }
-}
+    
+    pub fn static_handler(&mut self,path:&str)->Handler{
+        self.static_paths.push(path.to_string());
+        fn handler(req:&mut Request,res:&mut Response){
+            let static_paths = res.static_paths.clone();
+            for dir_path in static_paths.iter() {
+                let path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + dir_path + &req.path;
+                let file_path = Path::new(&path);
+                if file_path.is_file(){
+                    res.send_file(&path);
+                }   
+            }
+        }
+        return handler;
+    }
 
+   
+}
 pub type Handler = fn(req:&mut Request,res:&mut Response);
 
 pub struct Route {
@@ -139,18 +155,4 @@ pub struct Route {
     pub method: HttpMethod,
     pub handlers:Vec<Handler>
 }
-impl Route {
-    // pub fn new(path: &str, method: &str, request: Request, response: Response) -> Self {}
-    pub fn get(path:&str, handlers:Vec<Handler>)->Route{
-        Route { path: path.to_string(), method: HttpMethod::GET,  handlers:handlers}
-    }
-    pub fn post(path:&str, handlers:Vec<Handler>)->Route{
-        Route { path: path.to_string(), method: HttpMethod::POST,  handlers:handlers}
-    }
-    pub fn put(path:&str,  handlers:Vec<Handler>)->Route{
-        Route { path: path.to_string(), method: HttpMethod::PUT,  handlers:handlers}
-    }
-    pub fn delete(path:&str,  handlers:Vec<Handler>)->Route{
-        Route { path: path.to_string(), method: HttpMethod::DELETE,  handlers:handlers}
-    }
-}
+

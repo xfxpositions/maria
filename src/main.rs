@@ -6,11 +6,11 @@ mod types;
 use request::{Request};
 use router::{Response, Router};
 
-
 fn main() {
     println!("Hello, world!");
     //creating router
     let mut router = Router::new();
+    
 
     //adding route to router
     fn handler1(_req:&mut Request,res:&mut Response){
