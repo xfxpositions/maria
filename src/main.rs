@@ -30,7 +30,6 @@ fn main() {
     router.all("/qwe",vec![middleware,handler1]);
     //add static serve path
     router.add_static_path("/src/static");
-
     //add another route to router   
     fn handler2(_req:&mut Request, res:&mut Response){
         res.send_text("deneme");

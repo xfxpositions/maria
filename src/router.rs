@@ -30,7 +30,6 @@ pub struct Router {
     pub render_path:String,
     pub static_paths:Vec<String>
 }
-
 impl Router {
     pub fn new()->Router{
         let routes :Vec<Route>= vec![];
@@ -108,6 +107,18 @@ impl Router {
     pub fn add_static_path(&mut self,path:&str){
         self.static_paths.push(path.to_string());
     }
+    pub fn static_handler(&mut self, path: String) -> DynamicHandler {
+        Box::new(move |req: &mut Request, res: &mut Response| {
+            Ok(for dir_path in self.static_paths.iter() {
+                let path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + dir_path + &req.path;
+                let file_path = Path::new(&path);
+                if file_path.is_file() {
+                    
+                    return Ok(res.send_static_file(&path));
+                }else{}
+            })
+        })
+    }
     pub fn all(&mut self,path:&str, handlers:Vec<Handler>){
         let route = Route { path: path.to_string(), method: HttpMethod::ALL , handlers:handlers};
         println!("route = {},{}",route.method.to_string(),route.path);
@@ -132,7 +143,10 @@ impl Router {
     }
 }
 
+
 pub type Handler = fn(req:&mut Request,res:&mut Response);
+
+pub type DynamicHandler = Box<dyn Fn(&mut Request, &mut Response) -> Result<(), String> + Send + Sync>;
 
 pub struct Route {
     pub path: String,
