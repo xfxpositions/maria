@@ -50,14 +50,14 @@ pub fn parse_headers(
         .ok_or("Invalid request: no HTTP version found")?
         .to_owned();
 
-    println!("first_line: {}", first_line);
-    println!("headers: {:?}", headers);
-    println!("body: {}", body_str);
+    // println!("first_line: {}", first_line);
+    // println!("headers: {:?}", headers);
+    // println!("body: {}", body_str);
 
-    println!(
-        "http_method: {}, path:{}, version:{}",
-        method, path, http_version
-    );
+    // println!(
+    //     "http_method: {}, path:{}, version:{}",
+    //     method, path, http_version
+    // );
     return Ok((
         (method.to_string(), path.to_string(), http_version),
         headers,

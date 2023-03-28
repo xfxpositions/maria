@@ -10,8 +10,9 @@ fn main() {
     println!("Hello, world!");
     //creating router
     let mut router = Router::new();
-    
-
+    fn a(req:&mut Request, res:&mut Response){
+        println!("TOP LEVEL HANDLER {}",req.method.to_string());       
+    }
     //adding route to router
     fn handler1(_req:&mut Request,res:&mut Response){
         res.send_file("index.html");
@@ -20,23 +21,12 @@ fn main() {
         res.add_header("deneme", "zibidi")
     }
     fn middleware(req:&mut Request,res:&mut Response){
-        println!("Header");
-        for header in req.headers.iter(){
-            println!("{}:{}",header.0,header.1);
-        }
-        println!("============================");
+        println!("Request method is: {}",req.method.to_string());
     }
+    router.top_level_handler(vec![middleware]);
     router.get("/",vec![set_header,handler1]);
-    router.all("/qwe",vec![middleware,handler1]);
     //add static serve path
     router.add_static_path("/src/static");
-
-    //add another route to router   
-    fn handler2(_req:&mut Request, res:&mut Response){
-        res.send_text("deneme");
-    }
-    router.get("/test", vec![handler2]);
-    router.get("/test2", vec![handler2.clone()]);
 
     //post handler example
     fn post_handler(req:&mut Request,res:&mut Response){

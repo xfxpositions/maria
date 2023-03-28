@@ -10,6 +10,7 @@ pub struct Response {
     pub raw_string: String,
     pub static_paths: Vec<String>,
     render_path: String,
+    pub finish:bool
 }
 impl Response {
     pub fn new(render_path:String,static_paths:Vec<String>) -> Response {
@@ -21,6 +22,7 @@ impl Response {
             raw_string: String::new(),
             static_paths:static_paths,
             render_path:render_path,
+            finish:false
         };
     }
     pub fn add_header(&mut self, key:&str,value:&str){
@@ -86,7 +88,6 @@ impl Response {
     pub fn send_file(&mut self, filename:&str){
         let base_path = std::env::current_dir().unwrap().to_str().unwrap().to_owned()+self.render_path.as_str();
         let file = fs::read_to_string(base_path + filename);
-        println!("{}", std::env::current_dir().unwrap().display());
         match file{
             Ok(file) => {
                 self.send_setup();

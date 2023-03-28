@@ -28,13 +28,14 @@ pub fn not_found_handler(response: &mut Response) {
 pub struct Router {
     pub routes: Vec<Route>,
     pub render_path:String,
-    pub static_paths:Vec<String>
+    pub static_paths:Vec<String>,
+    pub top_level_handlers:Vec<Vec<Handler>>
 }
 
 impl Router {
     pub fn new()->Router{
         let routes :Vec<Route>= vec![];
-        Router { routes: routes,render_path:"/src/views/".to_string(), static_paths:vec![] }
+        Router { routes: routes,render_path:"/src/views/".to_string(), static_paths:vec![], top_level_handlers:vec![] }
     }
     pub fn listen(&mut self,port:u32){    
             let hostname = format!("127.0.0.1:{}",port.to_string());
@@ -55,40 +56,38 @@ impl Router {
         let mut request = parse_buffer(stream);
         let mut response: Response = Response::new(self.render_path.clone(),self.static_paths.clone());
         let mut not_found = true;
-        
-        //first check the path is actually reffering a static file
 
-        let mut is_static = false;
-        for dir_path in self.static_paths.iter(){
-            let path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + dir_path + &request.path;
-            let file_path = Path::new(&path);
-                if file_path.is_file(){
-                    is_static = true;
-                    response.send_static_file(&path);
+        //top level handlers
+        for handlers in self.top_level_handlers.iter(){
+            for handler in handlers.iter(){
+                if !response.finish{
+                    (handler)(&mut request,&mut response);
                 }
+            }
         }
-        if !is_static{
-            for route in self.routes.iter_mut() {
-                if route.path == "*" || request.path == route.path{
-                    if route.method == HttpMethod::ALL || request.method == route.method{
-                        not_found = false;
-                        for handler in route.handlers.iter_mut(){
+    
+        for route in self.routes.iter_mut() {
+            if route.path == "*" || request.path == route.path{
+                if route.method == HttpMethod::ALL || request.method == route.method{
+                    not_found = false;
+                    for handler in route.handlers.iter_mut(){
+                        if !response.finish{
                             (handler)(&mut request,&mut response);
                         }
-                    }else{
-                        not_found = false;
-                        fn handler(request: &mut Request, response: &mut Response){
-                            let body = format!("No avaible path for {} method, you can try another methods",request.method.to_string());
-                            response.send_text(body.as_str());
-                        }
-                        handler(&mut request,&mut response);
                     }
-                } 
-            }
-            //404 handler
-            if not_found{
-                not_found_handler(&mut response);
-            }
+                }else{
+                    not_found = false;
+                    fn handler(request: &mut Request, response: &mut Response){
+                        let body = format!("No avaible path for {} method, you can try another methods",request.method.to_string());
+                        response.send_text(body.as_str());
+                    }
+                    handler(&mut request,&mut response);
+                }
+            } 
+        }
+        //404 handler
+        if not_found{
+            not_found_handler(&mut response);
         }
            
         // fn write_response(stream:&mut TcpStream,response: &mut Response)->Result<(),(String)>{
@@ -100,7 +99,7 @@ impl Router {
         stream.write(response.raw_string.as_bytes()).unwrap();
         stream.flush().unwrap();
 
-        println!("HOCAM HOCAM HOCAM \n{:?}", response);
+        //println!("HOCAM HOCAM HOCAM \n{:?}", response);
     }
     pub fn set_render_path(&mut self,path:&str){
         self.render_path = path.to_string();
@@ -108,14 +107,15 @@ impl Router {
     pub fn add_static_path(&mut self,path:&str){
         self.static_paths.push(path.to_string());
     }
+    pub fn top_level_handler(&mut self,handlers:Vec<Handler>){
+        self.top_level_handlers.push(handlers);
+    }
     pub fn all(&mut self,path:&str, handlers:Vec<Handler>){
         let route = Route { path: path.to_string(), method: HttpMethod::ALL , handlers:handlers};
-        println!("route = {},{}",route.method.to_string(),route.path);
         self.routes.push(route);
     }
     pub fn get(&mut self,path:&str, handlers:Vec<Handler>){
         let route = Route { path: path.to_string(), method: HttpMethod::GET , handlers:handlers};
-        println!("route = {},{}",route.method.to_string(),route.path);
         self.routes.push(route);
     }
     pub fn post(&mut self,path:&str, handlers:Vec<Handler>){
@@ -131,17 +131,22 @@ impl Router {
         self.routes.push(route);
     }
     
-    pub fn static_handler(&mut self,path:&str)->Handler{
+    pub fn static_handler(&mut self,path:&str,a:&str)->Handler{
         self.static_paths.push(path.to_string());
         fn handler(req:&mut Request,res:&mut Response){
             let static_paths = res.static_paths.clone();
-            for dir_path in static_paths.iter() {
+            for dir_path in static_paths.iter(){
                 let path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + dir_path + &req.path;
                 let file_path = Path::new(&path);
-                if file_path.is_file(){
-                    res.send_file(&path);
-                }   
+                    if file_path.is_file(){
+                        res.send_static_file(&path);
+                        res.finish = true;
+                    }else{
+                        res.send_text("DAYANAMIYORUM");
+                        res.finish = true;
+                    }
             }
+            res.finish = true;
         }
         return handler;
     }
