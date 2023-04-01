@@ -5,7 +5,8 @@ mod router;
 mod types;
 use request::{Request};
 use router::{Response, Router};
-
+use serde::{Serialize, Deserialize};
+use serde_json::json;
 fn main() {
     println!("Hello, world!");
     //creating router
@@ -28,6 +29,23 @@ fn main() {
     //add static serve path
     router.add_static_path("/src/static");
 
+    //json example
+    fn json_handler(_req: &mut Request, res: &mut Response) {
+        #[derive(Serialize, Debug, Deserialize)]
+        struct Message {
+            pub message: String,
+        }
+        let j = json!({
+            "fingerprint": "0xF9BA143B95FF6D82",
+            "location": "Menlo Park, CA"
+        });
+        res.send_json(&j);
+        
+        let message = Message{message:"Test".to_string()};
+        //res.send_json(&message); you can also do this.
+    }
+    
+    router.get("/json",vec![json_handler]);
     //post handler example
     fn post_handler(req:&mut Request,res:&mut Response){
         res.set_status_code_raw(200);

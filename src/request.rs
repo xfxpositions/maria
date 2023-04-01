@@ -55,7 +55,7 @@ pub fn parse_headers(
     // println!("body: {}", body_str);
 
     // println!(
-    //     "http_method: {}, path:{}, version:{}",
+    //     "http_metho  d: {}, path:{}, version:{}",
     //     method, path, http_version
     // );
     return Ok((
