@@ -1,10 +1,11 @@
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum HttpMethod {
     GET,
     POST,
     PUT,
     DELETE,
-    UNKNOWN
+    UNKNOWN,
+    ALL
 }
 impl HttpMethod {
     pub fn get(http_method: HttpMethod) -> String {
@@ -13,6 +14,7 @@ impl HttpMethod {
             Self::POST => "POST".to_string(),
             Self::PUT => "PUT".to_string(),
             Self::DELETE => "DELETE".to_string(),
+            Self::ALL => "ALL".to_string(),
             _ => "unknown".to_string(),
         }
     }
@@ -22,6 +24,7 @@ impl HttpMethod {
             "POST" => HttpMethod::POST,
             "PUT" => HttpMethod::PUT,
             "DELETE" => HttpMethod::DELETE,
+            "ALL" => HttpMethod::ALL,
             _ => HttpMethod::UNKNOWN,
         }
     }
@@ -31,6 +34,7 @@ impl HttpMethod {
             Self::POST => "POST".to_string(),
             Self::PUT => "PUT".to_string(),
             Self::DELETE => "DELETE".to_string(),
+            Self::ALL => "ALL".to_string(),
             _ => "unknown".to_string(),
         }
     }

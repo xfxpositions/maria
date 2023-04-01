@@ -1,5 +1,8 @@
 use std::{any::Any, fs, path::Path};
 
+use serde::Serialize;
+use serde_json::{Value, json};
+
 use crate::types::{content_type::ContentType, status_code::StatusCode};
 #[derive(Debug)]
 pub struct Response {
@@ -8,17 +11,21 @@ pub struct Response {
     pub headers: Vec<(String, String)>,
     pub body: String,
     pub raw_string: String,
-    render_path: String
+    pub static_paths: Vec<String>,
+    render_path: String,
+    pub finish:bool
 }
 impl Response {
-    pub fn new(render_path:String) -> Response {
+    pub fn new(render_path:String,static_paths:Vec<String>) -> Response {
         return Response {
             status_code: 0u16,
             content_type: ContentType::Unknown,
             headers: vec![],
             body: String::new(),
             raw_string: String::new(),
-            render_path:render_path
+            static_paths:static_paths,
+            render_path:render_path,
+            finish:false
         };
     }
     pub fn add_header(&mut self, key:&str,value:&str){
@@ -67,12 +74,20 @@ impl Response {
         self.body = text.to_string();
         self.pack_response();
     }
-    pub fn send_json(&mut self, json: String) {
-        self.send_setup();
-        self.add_header("Content-Length",json.len().to_string().as_str());
-        self.set_content_type(ContentType::Json);
-        self.body = json;
-        self.pack_response();
+    pub fn send_json<T: Serialize>(&mut self, data: T) {
+        match serde_json::to_string(&data) {
+            Ok(json_str) => {
+                self.send_setup();
+                self.set_content_type(ContentType::Json);
+                self.add_header("Content-Length", json_str.len().to_string().as_str());
+                self.body = json_str;
+                self.pack_response();
+            },
+            Err(e) => {
+                self.set_status_code_raw(500);
+                self.send_text(format!("Error serializing JSON data: {:?}", e).as_str());
+            }
+        }
     }
     pub fn send_html(&mut self, html: &str) {
         self.send_setup();
@@ -84,7 +99,6 @@ impl Response {
     pub fn send_file(&mut self, filename:&str){
         let base_path = std::env::current_dir().unwrap().to_str().unwrap().to_owned()+self.render_path.as_str();
         let file = fs::read_to_string(base_path + filename);
-        println!("{}", std::env::current_dir().unwrap().display());
         match file{
             Ok(file) => {
                 self.send_setup();
@@ -124,4 +138,8 @@ impl Response {
     pub fn set_status_code_raw(&mut self, status_code: u16) {
         self.status_code = status_code;
     }
+   
+    
+    
+
 }

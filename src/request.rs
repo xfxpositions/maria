@@ -50,14 +50,14 @@ pub fn parse_headers(
         .ok_or("Invalid request: no HTTP version found")?
         .to_owned();
 
-    println!("first_line: {}", first_line);
-    println!("headers: {:?}", headers);
-    println!("body: {}", body_str);
+    // println!("first_line: {}", first_line);
+    // println!("headers: {:?}", headers);
+    // println!("body: {}", body_str);
 
-    println!(
-        "http_method: {}, path:{}, version:{}",
-        method, path, http_version
-    );
+    // println!(
+    //     "http_metho  d: {}, path:{}, version:{}",
+    //     method, path, http_version
+    // );
     return Ok((
         (method.to_string(), path.to_string(), http_version),
         headers,
@@ -70,11 +70,11 @@ pub fn parse_headers(
 pub struct Request {
     pub path: String,
     pub method: HttpMethod,
-    version: String,
-    headers: Vec<(String, String)>,
-    headers_raw: String,
-    body: String,
-    raw_string: String,
+    pub version: String,
+    pub headers: Vec<(String, String)>,
+    pub headers_raw: String,
+    pub body: String,
+    pub raw_string: String,
 }
 impl Request {
     pub fn new(request_string: String) -> Request {
@@ -90,4 +90,5 @@ impl Request {
             raw_string: request_string,
         };
     }
+    
 }
