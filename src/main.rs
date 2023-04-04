@@ -21,14 +21,12 @@ fn main() {
     fn set_header(_req:&mut Request,res:&mut Response){
         res.add_header("deneme", "zibidi")
     }
-    fn middleware(req:&mut Request,res:&mut Response){
-        println!("Request method is: {}",req.method.to_string());
+    fn middleware(req:&mut Request,_res:&mut Response){
+        println!("Request method is {:?}",req.method.to_string());
     }
     router.top_level_handler(vec![middleware]);
     router.get("/",vec![set_header,handler1]);
-    //add static serve path
-    router.add_static_path("/src/static");
-
+    
     //json example
     fn json_handler(_req: &mut Request, res: &mut Response) {
         #[derive(Serialize, Debug, Deserialize)]
@@ -41,19 +39,32 @@ fn main() {
         });
         res.send_json(&j);
         
+        //struct
         let message = Message{message:"Test".to_string()};
         //res.send_json(&message); you can also do this.
     }
-    
     router.get("/json",vec![json_handler]);
+
     //post handler example
     fn post_handler(req:&mut Request,res:&mut Response){
         res.set_status_code_raw(200);
         println!("request is => {:?}",req);
         res.send_text("post example");
     }
-    router.post("/examplepost",vec![post_handler]);
 
+    //queries example
+    fn query_test(req:&mut Request, res:&mut Response){
+        let name = req.get_query("name").unwrap();
+
+        if(name.is_empty()){
+            res.send_html("<h1>No name provided in queries.</h1>")
+        }else{
+            res.send_html(format!("<h1>Hello, {name}</h1>").as_str());
+        }
+    }
+    router.get("/query",vec![query_test]);
+
+    router.post("/examplepost",vec![post_handler]);
 
     router.listen(8080);
 }
