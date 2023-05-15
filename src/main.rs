@@ -1,13 +1,8 @@
-mod parse_route;
-mod request;
-mod response;
-mod router;
-mod types;
-use request::{Request};
-use router::{Response, Router};
-use serde::{Serialize, Deserialize};
+mod prelude;
+use prelude::*;
 use serde_json::json;
 fn main() {
+    
     println!("Hello, world!");
     //creating router
     let mut router = Router::new();
@@ -66,5 +61,5 @@ fn main() {
 
     router.post("/examplepost",vec![post_handler]);
 
-    router.listen(8080);
+    router.listen(443);
 }
