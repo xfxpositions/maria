@@ -1,4 +1,3 @@
-export const mode = "jit";
 export const content = [
   "./components//*.{js,vue,ts}",
   "./layouts//.vue",

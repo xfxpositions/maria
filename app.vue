@@ -1,8 +1,4 @@
 <template>
-  <div class="h-screen">
-    <NuxtPage></NuxtPage>
-  </div>
+  <Navbar></Navbar>
+  <NuxtPage></NuxtPage>
 </template>
-<script setup>
-import loadingJSON from "@/assets/scrolldown.json";
-</script>
