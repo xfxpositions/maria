@@ -3,7 +3,7 @@ use std::{any::Any, fs, path::Path};
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use crate::types::{content_type::ContentType, status_code::StatusCode};
+use crate::types::{ContentType, StatusCode};
 #[derive(Debug)]
 pub struct Response {
     pub status_code: u16,

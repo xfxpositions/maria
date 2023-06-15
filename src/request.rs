@@ -1,4 +1,5 @@
-use crate::types::http_methods::HttpMethod;
+use crate::types::HttpMethod;
+
 use std::collections::HashMap;
 
 pub fn parse_headers(
