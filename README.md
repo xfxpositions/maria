@@ -13,23 +13,21 @@
 - [ ] Multithreading
 
 ## Examples
-- Hello world example 
-```
-mod parse_route;
-mod request;
-mod response;
-mod router;
-mod types;
-use request::{Request};
-use router::{Response, Router};
-use serde::{Serialize, Deserialize};
-//importing
-let mut router = Router::new();
-let hello_world(_req:&mut Request, res:&mut Response){
-  res.send_html("<h1>Hello world from Maria.rs!</h1>");
+- Hello world example
+```rust
+use maria::{Router,Request,Response};
+
+fn main(){
+    let mut router = Router::new();
+    
+    fn hello(req: &mut Request, res: &mut Response){
+        res.send_text("Hello from maria.rs");
+    }
+    router.get("/",vec![hello]);
+    
+    router.listen(1002);
+    //that's it!
 }
-router.get("/",vec![hello_world]); // our first route
 ```
- 
 
 ### /examples will be avaible in the future.
