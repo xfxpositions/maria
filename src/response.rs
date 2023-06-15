@@ -13,7 +13,7 @@ pub struct Response {
     pub raw_string: String,
     pub static_paths: Vec<String>,
     render_path: String,
-    pub finish:bool
+    pub finish: bool
 }
 impl Response {
     pub fn new(render_path:String,static_paths:Vec<String>) -> Response {

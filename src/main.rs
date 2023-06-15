@@ -1,13 +1,16 @@
 extern crate maria;
 
+use std::collections::HashMap;
+
 use maria::{Router,Request,Response};
 
 fn main(){
     let mut router = Router::new();
-    fn amk_routeu(req: &mut Request, res: &mut Response){
-        res.send_text("sa naber qwe");
+    fn hello(req: &mut Request, res: &mut Response){
+        println!("{:?}",&req.headers);
+        res.send_text("Hello from maria.rs");
     }
-    router.get("/",vec![amk_routeu]);
+    router.get("/",vec![hello]);
     
-    router.listen(1002)
+    router.listen(1002);
 }
