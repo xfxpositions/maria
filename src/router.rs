@@ -1,8 +1,11 @@
-pub(crate) use crate::request::Request;
-pub(crate) use crate::response::Response;
-use crate::types::http_methods::HttpMethod;
-pub(crate) use crate::types::status_code::StatusCode;
+
+pub use crate::Request;
+pub use crate::Response;
+
+pub use crate::types::{ContentType, StatusCode, HttpMethod};
+
 use std::{io::{Write, Read}, net::{TcpStream, TcpListener}, path::Path};
+
 pub fn parse_buffer(stream:&mut TcpStream)->Request{
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).unwrap();
