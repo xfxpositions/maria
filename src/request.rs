@@ -2,6 +2,11 @@ use crate::types::HttpMethod;
 
 use std::collections::HashMap;
 
+fn parse_path(path_string: &String){
+    let parts = path_string.split("/");
+    
+}
+
 pub fn parse_headers(
     request_string: String,
 ) -> Result<
@@ -11,6 +16,7 @@ pub fn parse_headers(
         String,
         String,
         Option<HashMap<String, String>>,
+
     ),
     String,
 > {
@@ -112,7 +118,8 @@ pub struct Request {
     pub headers_raw: String,
     pub body: String,
     pub raw_string: String,
-    pub queries: Option<HashMap<String, String>>
+    pub queries: Option<HashMap<String, String>>,
+    pub params: HashMap<String, String>
 }
 impl Request {
     pub fn new(request_string: String) -> Request {
@@ -126,7 +133,8 @@ impl Request {
             headers_raw: headers_str,
             body: body,
             raw_string: request_string,
-            queries:queries
+            queries:queries,
+            params: HashMap::new()
         };
     }
 

@@ -4,6 +4,7 @@ pub use crate::Response;
 
 pub use crate::types::{ContentType, StatusCode, HttpMethod};
 
+use std::collections::HashMap;
 use std::{io::{Write, Read}, net::{TcpStream, TcpListener}, path::Path};
 
 pub fn parse_buffer(stream:&mut TcpStream)->Request{
@@ -53,13 +54,56 @@ impl Router {
                 Err(e) => panic!("Port error {:?}",e),
                 }   
             }
-            
     
     pub fn handle_request(&mut self, stream: &mut TcpStream) {
+        fn handle_path(server_path: &String, client_path: &String)-> HashMap<String, String>{
+            fn handle_server_path(url: &String) -> HashMap<u32, String> {
+                let mut path_params: HashMap<u32, String> = HashMap::new();
+        
+                let mut path = url.clone().to_string();
+                path.remove(0);
+                let mut parts: Vec<&str> = path.split('/').collect();
+                for (index, part) in parts.iter_mut().enumerate() {
+                    if part.contains(':') {
+                        *part = &part[1..]; // Update the value in-place
+                        path_params.insert(index as u32, part.to_string());
+                    }
+                    println!("part: {} index: {}", part, index);
+                }
+                path_params
+            }
+            fn handle_client_path(url: &String, path_params: HashMap<u32, String> ) -> HashMap<String, String> {
+                let mut params: HashMap<String, String> = HashMap::new();
+                
+                let mut path = url.clone().to_string();
+                path.remove(0);
+                let parts: Vec<&str> = path.split('/').collect();
+                for (index, part) in parts.iter().enumerate() {
+                    let item = path_params.get_key_value(&(index as u32));
+                    match item{
+                        Some(item) => {
+                            println!("client index = {} part = {:?}", index, part);
+                            if index as u32 == *item.0 {
+                                params.insert(item.1.to_string(), part.to_string());
+                            }
+                        },
+                        None => {
+                            continue;
+                        }
+                    }   
+                }
+                params
+            }
+            let path_params = handle_server_path(&server_path);
+            handle_client_path(&client_path, path_params)
+        }
+
         let mut request = parse_buffer(stream);
         let mut response: Response = Response::new(self.render_path.clone(),self.static_paths.clone());
+        // if &request.path.chars().last().unwrap() != &'/' {
+        //     let _ = &request.path.push_str("/");
+        // }
         let mut not_found = true;
-
         //top level handlers
         for handlers in self.top_level_handlers.iter(){
             for handler in handlers.iter(){
@@ -68,9 +112,25 @@ impl Router {
                 }
             }
         }
-    
+        
+        fn check_path_params(route_path: &String, request_path: &String) -> bool{
+            let route_parts: Vec<&str> = route_path.split("/").collect();
+            let request_parts: Vec<&str> = request_path.split("/").collect();
+            let mut state = true;
+            for (index, route_part) in route_parts.iter().enumerate(){
+                if !(*route_part == request_parts[index] || route_part.contains(":")) {
+                    state = false;
+                }
+            }
+            return state;
+        }
+        
         for route in self.routes.iter_mut() {
-            if route.path == "*" || request.path == route.path{
+            let params = handle_path(&route.path, &request.path);
+            request.params = params;
+            println!("CHECK PARAMS = {}", check_path_params(&route.path, &request.path));
+            if route.path == "*" || request.path == route.path ||  check_path_params(&route.path, &request.path) {                
+                
                 if route.method == HttpMethod::ALL || request.method == route.method{
                     not_found = false;
                     for handler in route.handlers.iter_mut(){
@@ -162,5 +222,8 @@ pub struct Route {
     pub path: String,
     pub method: HttpMethod,
     pub handlers:Vec<Handler>
+}
+impl Route{
+    pub fn new(){}
 }
 
