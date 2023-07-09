@@ -1,6 +1,5 @@
 extern crate maria;
 
-
 use maria::{Router,Request,Response};
 
 fn main(){
@@ -15,4 +14,3 @@ fn main(){
     router.get("/deneme/:id",vec![hello]);
     
     router.listen(1002);
-}
