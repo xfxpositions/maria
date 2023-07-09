@@ -8,13 +8,37 @@ use std::collections::HashMap;
 
 use std::{io::{Write, Read}, net::{TcpStream, TcpListener}, path::Path};
 
-pub fn parse_buffer(stream:&mut TcpStream)->Request{
-    let mut buffer = [0; 1024];
-    stream.read(&mut buffer).unwrap();
-    let request_string = String::from_utf8_lossy(&mut buffer[..]);
+pub fn parse_buffer(stream: &mut TcpStream) -> Request {
+    let mut buffer = Vec::new();
+
+    loop {
+        let mut chunk = vec![0; 1024]; // Create a temporary chunk buffer
+
+        match stream.read(&mut chunk) {
+            Ok(bytes_read) if bytes_read > 0 => {
+                println!("chuck is => {:?}", bytes_read);
+                chunk.resize(bytes_read, 0);
+                buffer.extend_from_slice(&chunk);
+
+                if bytes_read < 1024 {
+                    break;
+                }
+            }
+            Ok(_) => {
+                // Continue reading
+            }
+            Err(e) => {
+               println!("something happened while reading the buffer {:?}", e);
+            }
+        }
+    }
+
+    let request_string = String::from_utf8_lossy(&buffer);
     let request = Request::new(request_string.to_string());
     return request;
 }
+
+
 pub fn json_handler(response: &mut Response) {
     let json_string = r#"
     {
