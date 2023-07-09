@@ -28,7 +28,7 @@ pub fn json_handler(response: &mut Response) {
 }
 pub fn not_found_handler(response: &mut Response) {
     response.set_status_code(StatusCode::NotFound);
-    response.send_file("notfound.html");
+    response.render("notfound.html");
 }
 pub struct Router {
     pub routes: Vec<Route>,
@@ -40,7 +40,7 @@ pub struct Router {
 impl Router {
     pub fn new()->Router{
         let routes :Vec<Route>= vec![];
-        Router { routes: routes,render_path:"/src/views/".to_string(), static_paths:vec![], top_level_handlers:vec![] }
+        Router { routes: routes,render_path:"./src/views/".to_string(), static_paths:vec![], top_level_handlers:vec![] }
     }
     pub fn listen(&mut self,port:u32){    
             let hostname = format!("127.0.0.1:{}",port.to_string());
@@ -69,7 +69,6 @@ impl Router {
                         *part = &part[1..]; // Update the value in-place
                         path_params.insert(index as u32, part.to_string());
                     }
-                    println!("part: {} index: {}", part, index);
                 }
                 path_params
             }
@@ -83,7 +82,6 @@ impl Router {
                     let item = path_params.get_key_value(&(index as u32));
                     match item{
                         Some(item) => {
-                            println!("client index = {} part = {:?}", index, part);
                             if index as u32 == *item.0 {
                                 params.insert(item.1.to_string(), part.to_string());
                             }
@@ -119,8 +117,10 @@ impl Router {
             let request_parts: Vec<&str> = request_path.split("/").collect();
             let mut state = true;
             for (index, route_part) in route_parts.iter().enumerate(){
-                if !(*route_part == request_parts[index] || route_part.contains(":")) {
-                    state = false;
+                if(index < request_parts.len()){
+                    if !(*route_part == request_parts[index] || route_part.contains(":")) {
+                        state = false;
+                    }
                 }
             }
             return state;
@@ -129,7 +129,6 @@ impl Router {
         for route in self.routes.iter_mut() {
             let params = handle_path(&route.path, &request.path);
             request.params = params;
-            println!("CHECK PARAMS = {}", check_path_params(&route.path, &request.path));
             if route.path == "*" || request.path == route.path ||  check_path_params(&route.path, &request.path) {                
                 
                 if route.method == HttpMethod::ALL || request.method == route.method{
@@ -153,17 +152,9 @@ impl Router {
         if not_found{
             not_found_handler(&mut response);
         }
-           
-        // fn write_response(stream:&mut TcpStream,response: &mut Response)->Result<(),(String)>{
-        //     stream.write(response.raw_string.as_bytes()).expect_err("can't write stream");
-        //     stream.flush().expect_err("can't flush stream");
-        //     Ok(())
-        // }
 
         stream.write(response.raw_string.as_bytes()).unwrap();
         stream.flush().unwrap();
-
-        //println!("HOCAM HOCAM HOCAM \n{:?}", response);
     }
     pub fn set_render_path(&mut self,path:&str){
         self.render_path = path.to_string();

@@ -127,6 +127,24 @@ impl Response {
             },
         }
     }
+    pub fn render(&mut self, file_name: &str) {
+        let file_path = Path::new(&self.render_path).join(file_name);
+        
+        let file = fs::read_to_string(&file_path);
+        match file{
+            Ok(file) => {
+                self.send_setup();
+                self.set_content_type(ContentType::Html);
+                self.add_header("Content-Length", file.len().to_string().as_str());
+                self.body = file;
+                self.pack_response();
+            },
+            Err(e) => {
+                self.send_text(format!("Err: an error occured to opening file {:?} in render path, err: {:?} ",&file_path.to_str(), e ).as_str());
+            },
+        }
+    }
+
     pub fn set_content_type(&mut self, content_type: ContentType) {
         let content_type_string = ContentType::get(content_type).to_string();
         self.headers
