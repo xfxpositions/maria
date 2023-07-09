@@ -14,6 +14,7 @@ fn main(){
     router.get("/test/:id",vec![query]);
 
     fn home(req: &mut Request, res: &mut Response){
+        println!("{}", req.body);
         res.render("index.html");
     }
     router.get("/", vec![home]);
