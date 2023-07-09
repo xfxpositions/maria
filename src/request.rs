@@ -2,15 +2,21 @@ use crate::types::HttpMethod;
 
 use std::collections::HashMap;
 
+fn parse_path(path_string: &String){
+    let parts = path_string.split("/");
+    
+}
+
 pub fn parse_headers(
     request_string: String,
 ) -> Result<
     (
         (String, String, String),
-        Vec<(String, String)>,
+        HashMap<String, String>,
         String,
         String,
         Option<HashMap<String, String>>,
+
     ),
     String,
 > {
@@ -18,7 +24,7 @@ pub fn parse_headers(
     let headers_str = parts.next().ok_or("")?;
     let body_str = parts.next().unwrap_or("");
 
-    let mut headers: Vec<(String, String)> = vec![];
+    let mut headers: HashMap<String, String> = HashMap::new();
     let mut first_line = None;
 
     for (i, line) in headers_str.lines().enumerate() {
@@ -35,7 +41,7 @@ pub fn parse_headers(
             .next()
             .ok_or(format!("Invalid header: {}", line))?
             .to_owned();
-        headers.push((key, value));
+        headers.insert(key, value);
     }
     let first_line = first_line.ok_or("Invalid request: no first line found")?;
     let mut first_line_parts = first_line.split_whitespace();
@@ -108,11 +114,12 @@ pub struct Request {
     pub path: String,
     pub method: HttpMethod,
     pub version: String,
-    pub headers: Vec<(String, String)>,
+    pub headers: HashMap<String, String>,
     pub headers_raw: String,
     pub body: String,
     pub raw_string: String,
-    pub queries: Option<HashMap<String, String>>
+    pub queries: Option<HashMap<String, String>>,
+    pub params: HashMap<String, String>
 }
 impl Request {
     pub fn new(request_string: String) -> Request {
@@ -126,16 +133,17 @@ impl Request {
             headers_raw: headers_str,
             body: body,
             raw_string: request_string,
-            queries:queries
+            queries:queries,
+            params: HashMap::new()
         };
     }
 
     pub fn get_query(&self,query_name: &str) -> Option<String> {
         if let Some(query_params) = &self.queries {
             if let Some(query_value) = query_params.get(query_name) {
-                return Some(query_value.clone());
+                return Some(query_value.to_owned());
             }
         }
-        Some(String::new()) // return an empty string if the query parameter is not present
+        None
     }
 }
