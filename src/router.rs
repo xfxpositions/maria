@@ -16,7 +16,6 @@ pub fn parse_buffer(stream: &mut TcpStream) -> Request {
 
         match stream.read(&mut chunk) {
             Ok(bytes_read) if bytes_read > 0 => {
-                println!("chuck is => {:?}", bytes_read);
                 chunk.resize(bytes_read, 0);
                 buffer.extend_from_slice(&chunk);
 
