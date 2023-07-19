@@ -8,4 +8,4 @@ pub use response::Response;
 pub use request::Request;
 pub use types::{ContentType,HttpMethod,StatusCode};
 
-pub use router::{Router};
+pub use router::{Router, Handler, HandlerFn, pack_handler, HandlerPtr};

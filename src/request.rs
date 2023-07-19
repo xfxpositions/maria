@@ -2,11 +2,6 @@ use crate::types::HttpMethod;
 
 use std::collections::HashMap;
 
-fn parse_path(path_string: &String){
-    let parts = path_string.split("/");
-    
-}
-
 pub fn parse_headers(
     request_string: String,
 ) -> Result<

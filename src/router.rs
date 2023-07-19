@@ -5,15 +5,16 @@ pub use crate::Response;
 pub use crate::types::{ContentType, StatusCode, HttpMethod};
 
 use std::collections::HashMap;
+use std::future::Future;
+use std::{path::Path, sync::Arc, sync::Mutex};
+use tokio::io::AsyncReadExt;
+use tokio::{io::AsyncWrite, io::AsyncRead, net::{TcpListener as AsyncTcpListener, TcpStream}};
 
-use std::{io::{Write, Read}, net::{TcpStream, TcpListener}, path::Path};
-
-pub fn parse_buffer(stream: &mut TcpStream) -> Request {
+pub async fn parse_buffer(stream: &mut TcpStream) -> Request {
     let mut buffer = Vec::new();
 
     loop {
         let mut chunk = vec![0; 1024]; // Create a temporary chunk buffer
-
         match stream.read(&mut chunk) {
             Ok(bytes_read) if bytes_read > 0 => {
                 println!("chuck is => {:?}", bytes_read);
@@ -50,9 +51,12 @@ pub fn json_handler(response: &mut Response) {
     response.set_status_code_raw(201);
     response.send_json(json_string.to_string());
 }
-pub fn not_found_handler(response: &mut Response) {
-    response.set_status_code(StatusCode::NotFound);
-    response.render("notfound.html");
+pub fn not_found_handler(response: Arc<Mutex<Response>>) -> HandlerPtr {
+    Box::new(async move{
+        let mut response_locked = response.lock().unwrap();
+        response_locked.set_status_code(StatusCode::NotFound);
+        response_locked.render("notfound.html");
+    })  
 }
 pub struct Router {
     pub routes: Vec<Route>,
@@ -66,21 +70,27 @@ impl Router {
         let routes :Vec<Route>= vec![];
         Router { routes: routes,render_path:"./src/views/".to_string(), static_paths:vec![], top_level_handlers:vec![] }
     }
-    pub fn listen(&mut self,port:u32){    
-            let hostname = format!("127.0.0.1:{}",port.to_string());
-            let listener = TcpListener::bind(hostname);
-            match
-                listener {
-                Ok(listener)=>{
-                    for stream in listener.incoming() {
-                        self.handle_request(&mut stream.unwrap());    
-                    }
+    pub async fn listen(&mut self,port:u32){    
+        let hostname = format!("127.0.0.1:{}",port.to_string());
+        let listener = AsyncTcpListener::bind(hostname).await;
+        match
+            listener {
+            Ok(listener)=>{
+
+                loop {
+                    let (stream, _) = listener.accept().await.unwrap();
+                    tokio::spawn(
+                        self.handle_request(stream)
+                    );
                 }
-                Err(e) => panic!("Port error {:?}",e),
-                }   
+
+                
             }
+            Err(e) => panic!("Port error {:?}",e),
+        }   
+    }
     
-    pub fn handle_request(&mut self, stream: &mut TcpStream) {
+    pub async fn handle_request(&mut self, mut stream: tokio::net::TcpStream) {
         fn handle_path(server_path: &String, client_path: &String)-> HashMap<String, String>{
             fn handle_server_path(url: &String) -> HashMap<u32, String> {
                 let mut path_params: HashMap<u32, String> = HashMap::new();
@@ -121,17 +131,18 @@ impl Router {
             handle_client_path(&client_path, path_params)
         }
 
-        let mut request = parse_buffer(stream);
-        let mut response: Response = Response::new(self.render_path.clone(),self.static_paths.clone());
+        let request_base = Arc::new(Mutex::new(parse_buffer(stream)));
+        let response_base = Arc::new(Mutex::new(Response::new(self.render_path.clone(),self.static_paths.clone())));
         // if &request.path.chars().last().unwrap() != &'/' {
         //     let _ = &request.path.push_str("/");
         // }
         let mut not_found = true;
+        let locked_response = response_base.lock().unwrap();
         //top level handlers
         for handlers in self.top_level_handlers.iter(){
             for handler in handlers.iter(){
-                if !response.finish{
-                    (handler)(&mut request,&mut response);
+                if !locked_response.finish{
+                    Box::into_pin((handler)(request_base.clone(), response_base.clone())).await;
                 }
             }
         }
@@ -149,9 +160,15 @@ impl Router {
             }
             return state;
         }
+        let mut request = request_base.lock().unwrap();
+        let response = response_base.lock().unwrap();
         
         for route in self.routes.iter_mut() {
+           
+
+
             let params = handle_path(&route.path, &request.path);
+            
             request.params = params;
             if route.path == "*" || request.path == route.path ||  check_path_params(&route.path, &request.path) {                
                 
@@ -159,22 +176,27 @@ impl Router {
                     not_found = false;
                     for handler in route.handlers.iter_mut(){
                         if !response.finish{
-                            (handler)(&mut request,&mut response);
+                            Box::into_pin((handler)(request_base.clone(),response_base.clone())).await;
                         }
                     }
                 }else{
                     not_found = false;
-                    fn handler(request: &mut Request, response: &mut Response){
-                        let body = format!("No avaible path for {} method, you can try another methods",request.method.to_string());
-                        response.send_text(body.as_str());
+                    fn handler(request: Arc<Mutex<Request>>, response: Arc<Mutex<Response>>)-> HandlerPtr{
+                        Box::new(async move{
+                            let mut response_locked = response.lock().unwrap();
+                            let request_locked = request.lock().unwrap();
+    
+                            let body = format!("No avaible path for {} method, you can try another methods", request_locked.method.to_string());
+                            response_locked.send_text(body.as_str());
+                        })
                     }
-                    handler(&mut request,&mut response);
+                    Box::into_pin(handler(request_base.clone(), response_base.clone())).await;
                 }
             } 
         }
         //404 handler
         if not_found{
-            not_found_handler(&mut response);
+            Box::into_pin(not_found_handler(response_base.clone())).await;
         }
 
         stream.write(response.raw_string.as_bytes()).unwrap();
@@ -193,10 +215,21 @@ impl Router {
         let route = Route { path: path.to_string(), method: HttpMethod::ALL , handlers:handlers};
         self.routes.push(route);
     }
-    pub fn get(&mut self,path:&str, handlers:Vec<Handler>){
-        let route = Route { path: path.to_string(), method: HttpMethod::GET , handlers:handlers};
+    pub fn get(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
+        let mut handlers: Vec<Handler> = Vec::new();
+    
+        for handler_fn in handler_functions {
+            handlers.push(Box::new(handler_fn));
+        }
+    
+        let route = Route {
+            path: path.to_string(),
+            method: HttpMethod::GET,
+            handlers: handlers,
+        };
         self.routes.push(route);
     }
+    
     pub fn post(&mut self,path:&str, handlers:Vec<Handler>){
         let route = Route { path: path.to_string(), method: HttpMethod::POST , handlers:handlers};
         self.routes.push(route);
@@ -210,30 +243,35 @@ impl Router {
         self.routes.push(route);
     }
     
-    pub fn static_handler(&mut self,path:&str,a:&str)->Handler{
-        self.static_paths.push(path.to_string());
-        fn handler(req:&mut Request,res:&mut Response){
-            let static_paths = res.static_paths.clone();
-            for dir_path in static_paths.iter(){
-                let path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + dir_path + &req.path;
-                let file_path = Path::new(&path);
-                    if file_path.is_file(){
-                        res.send_static_file(&path);
-                        res.finish = true;
-                    }else{
-                        res.send_text("DAYANAMIYORUM");
-                        res.finish = true;
-                    }
-            }
-            res.finish = true;
-        }
-        return handler;
-    }
+    // pub fn static_handler(&mut self,path:&str,a:&str)->Handler{
+    //     self.static_paths.push(path.to_string());
+    //     fn handler(req:&mut Request,res:&mut Response){
+    //         let static_paths = res.static_paths.clone();
+    //         for dir_path in static_paths.iter(){
+    //             let path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + dir_path + &req.path;
+    //             let file_path = Path::new(&path);
+    //                 if file_path.is_file(){
+    //                     res.send_static_file(&path);
+    //                     res.finish = true;
+    //                 }else{
+    //                     res.send_text("DAYANAMIYORUM");
+    //                     res.finish = true;
+    //                 }
+    //         }
+    //         res.finish = true;
+    //     }
+    //     return handler;
+    // }
 
    
 }
-pub type Handler = fn(req:&mut Request,res:&mut Response);
-
+pub fn pack_handler(func: Handler) -> Box<Handler>{
+    Box::new(func)
+}
+//pub type Handler = fn(req:&mut Request,res:&mut Response);
+pub type HandlerFn = fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Box<dyn Future<Output = ()>>;
+pub type Handler = Box<HandlerFn>;
+pub type HandlerPtr =  Box<dyn Future<Output = ()>>;
 pub struct Route {
     pub path: String,
     pub method: HttpMethod,
