@@ -5,19 +5,21 @@ pub use crate::Response;
 pub use crate::types::{ContentType, StatusCode, HttpMethod};
 
 use std::collections::HashMap;
+use std::error::Error;
 use std::future::Future;
 use std::{path::Path, sync::Arc, sync::Mutex};
 use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
 use tokio::{io::AsyncWrite, io::AsyncRead, net::{TcpListener as AsyncTcpListener, TcpStream}};
 
-pub async fn parse_buffer(stream: &mut TcpStream) -> Request {
+pub async fn parse_buffer(stream: &mut TcpStream) -> Result<Request, Box<dyn Error>> {
     let mut buffer = Vec::new();
 
     loop {
         let mut chunk = vec![0; 1024]; // Create a temporary chunk buffer
-        match stream.read(&mut chunk) {
+        match stream.read(&mut chunk).await {
             Ok(bytes_read) if bytes_read > 0 => {
-                println!("chuck is => {:?}", bytes_read);
+                println!("chunk is => {:?}", bytes_read);
                 chunk.resize(bytes_read, 0);
                 buffer.extend_from_slice(&chunk);
 
@@ -29,14 +31,15 @@ pub async fn parse_buffer(stream: &mut TcpStream) -> Request {
                 // Continue reading
             }
             Err(e) => {
-               println!("something happened while reading the buffer {:?}", e);
+                println!("something happened while reading the buffer {:?}", e);
+                return Err(Box::new(e));
             }
         }
     }
 
     let request_string = String::from_utf8_lossy(&buffer);
     let request = Request::new(request_string.to_string());
-    return request;
+    Ok(request)
 }
 
 
@@ -79,9 +82,9 @@ impl Router {
 
                 loop {
                     let (stream, _) = listener.accept().await.unwrap();
-                    tokio::spawn(
-                        self.handle_request(stream)
-                    );
+                    
+                    tokio::spawn(Box::pin(self.handle_request(&mut stream)));
+                    
                 }
 
                 
@@ -90,7 +93,7 @@ impl Router {
         }   
     }
     
-    pub async fn handle_request(&mut self, mut stream: tokio::net::TcpStream) {
+    pub async fn handle_request(&mut self, stream: &mut tokio::net::TcpStream) {
         fn handle_path(server_path: &String, client_path: &String)-> HashMap<String, String>{
             fn handle_server_path(url: &String) -> HashMap<u32, String> {
                 let mut path_params: HashMap<u32, String> = HashMap::new();
@@ -131,17 +134,19 @@ impl Router {
             handle_client_path(&client_path, path_params)
         }
 
-        let request_base = Arc::new(Mutex::new(parse_buffer(stream)));
-        let response_base = Arc::new(Mutex::new(Response::new(self.render_path.clone(),self.static_paths.clone())));
-        // if &request.path.chars().last().unwrap() != &'/' {
-        //     let _ = &request.path.push_str("/");
-        // }
+        let req = parse_buffer(stream).await.unwrap();
+        let request_base = Arc::new(Mutex::new(req));
+        let response_base = Arc::new(Mutex::new(Response::new(self.render_path.clone(), self.static_paths.clone())));
+
+      
+
         let mut not_found = true;
-        let locked_response = response_base.lock().unwrap();
+        let a = response_base.clone();
+        let locked_response = a.lock().unwrap();
         //top level handlers
-        for handlers in self.top_level_handlers.iter(){
-            for handler in handlers.iter(){
-                if !locked_response.finish{
+        for handlers in self.top_level_handlers.iter() {
+            for handler in handlers.iter() {
+                if !locked_response.finish {
                     Box::into_pin((handler)(request_base.clone(), response_base.clone())).await;
                 }
             }
@@ -199,8 +204,8 @@ impl Router {
             Box::into_pin(not_found_handler(response_base.clone())).await;
         }
 
-        stream.write(response.raw_string.as_bytes()).unwrap();
-        stream.flush().unwrap();
+        stream.write(response.raw_string.as_bytes()).await.unwrap();
+        stream.flush().await.unwrap();
     }
     pub fn set_render_path(&mut self,path:&str){
         self.render_path = path.to_string();
@@ -269,7 +274,7 @@ pub fn pack_handler(func: Handler) -> Box<Handler>{
     Box::new(func)
 }
 //pub type Handler = fn(req:&mut Request,res:&mut Response);
-pub type HandlerFn = fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Box<dyn Future<Output = ()>>;
+pub type HandlerFn = fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Box<dyn Future<Output = ()> + Send>;
 pub type Handler = Box<HandlerFn>;
 pub type HandlerPtr =  Box<dyn Future<Output = ()>>;
 pub struct Route {
