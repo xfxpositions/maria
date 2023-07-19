@@ -38,6 +38,5 @@ async fn main(){
 
 
     
-  
-    router.listen(1002).await;
+    async_std::task::block_on(router.listen(1002));
 }

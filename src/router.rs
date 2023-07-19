@@ -3,14 +3,16 @@ pub use crate::Request;
 pub use crate::Response;
 
 pub use crate::types::{ContentType, StatusCode, HttpMethod};
-
+use async_std::prelude::*;
 use std::collections::HashMap;
 use std::error::Error;
 use std::future::Future;
-use std::{path::Path, sync::Arc, sync::Mutex};
+use std::{path::Path, sync::Arc};
+use futures::lock::Mutex;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::{io::AsyncWrite, io::AsyncRead, net::{TcpListener as AsyncTcpListener, TcpStream}};
+use std::pin::Pin;
 
 pub async fn parse_buffer(stream: &mut TcpStream) -> Result<Request, Box<dyn Error>> {
     let mut buffer = Vec::new();
@@ -54,9 +56,9 @@ pub fn json_handler(response: &mut Response) {
     response.set_status_code_raw(201);
     response.send_json(json_string.to_string());
 }
-pub fn not_found_handler(response: Arc<Mutex<Response>>) -> HandlerPtr {
+pub async fn not_found_handler(response: Arc<Mutex<Response>>) -> HandlerPtr {
     Box::new(async move{
-        let mut response_locked = response.lock().unwrap();
+        let mut response_locked = response.lock().await;
         response_locked.set_status_code(StatusCode::NotFound);
         response_locked.render("notfound.html");
     })  
@@ -73,24 +75,17 @@ impl Router {
         let routes :Vec<Route>= vec![];
         Router { routes: routes,render_path:"./src/views/".to_string(), static_paths:vec![], top_level_handlers:vec![] }
     }
-    pub async fn listen(&mut self,port:u32){    
-        let hostname = format!("127.0.0.1:{}",port.to_string());
+    pub async fn listen(&mut self, port: u32) {
+        let hostname = format!("127.0.0.1:{}", port.to_string());
         let listener = AsyncTcpListener::bind(hostname).await;
-        match
-            listener {
-            Ok(listener)=>{
-
-                loop {
-                    let (stream, _) = listener.accept().await.unwrap();
-                    
-                    tokio::spawn(Box::pin(self.handle_request(&mut stream)));
-                    
+        match listener {
+            Ok(listener) => {
+                while let Ok((stream, _)) = listener.accept().await {
+                    async_std::task::spawn(self.handle_request(&mut stream));
                 }
-
-                
             }
-            Err(e) => panic!("Port error {:?}",e),
-        }   
+            Err(e) => panic!("Port error {:?}", e),
+        }
     }
     
     pub async fn handle_request(&mut self, stream: &mut tokio::net::TcpStream) {
@@ -142,12 +137,12 @@ impl Router {
 
         let mut not_found = true;
         let a = response_base.clone();
-        let locked_response = a.lock().unwrap();
+        let locked_response = a.lock().await;
         //top level handlers
         for handlers in self.top_level_handlers.iter() {
             for handler in handlers.iter() {
                 if !locked_response.finish {
-                    Box::into_pin((handler)(request_base.clone(), response_base.clone())).await;
+                    handler(request_base.clone(), response_base.clone()).await;
                 }
             }
         }
@@ -165,8 +160,8 @@ impl Router {
             }
             return state;
         }
-        let mut request = request_base.lock().unwrap();
-        let response = response_base.lock().unwrap();
+        let mut request = request_base.lock().await;
+        let response = response_base.lock().await;
         
         for route in self.routes.iter_mut() {
            
@@ -181,27 +176,29 @@ impl Router {
                     not_found = false;
                     for handler in route.handlers.iter_mut(){
                         if !response.finish{
-                            Box::into_pin((handler)(request_base.clone(),response_base.clone())).await;
+                            (handler)(request_base.clone(),response_base.clone()).await;
                         }
                     }
                 }else{
                     not_found = false;
-                    fn handler(request: Arc<Mutex<Request>>, response: Arc<Mutex<Response>>)-> HandlerPtr{
+                    async fn handler(request: Arc<Mutex<Request>>, response: Arc<Mutex<Response>>)-> HandlerPtr{
                         Box::new(async move{
-                            let mut response_locked = response.lock().unwrap();
-                            let request_locked = request.lock().unwrap();
+                            let mut response_locked = response.lock().await;
+                            let request_locked = request.lock().await;
     
                             let body = format!("No avaible path for {} method, you can try another methods", request_locked.method.to_string());
                             response_locked.send_text(body.as_str());
                         })
                     }
-                    Box::into_pin(handler(request_base.clone(), response_base.clone())).await;
+
+                    handler(request_base.clone(), response_base.clone()).await;
                 }
             } 
         }
         //404 handler
         if not_found{
-            Box::into_pin(not_found_handler(response_base.clone())).await;
+            
+            not_found_handler(response_base.clone()).await;
         }
 
         stream.write(response.raw_string.as_bytes()).await.unwrap();
@@ -274,7 +271,7 @@ pub fn pack_handler(func: Handler) -> Box<Handler>{
     Box::new(func)
 }
 //pub type Handler = fn(req:&mut Request,res:&mut Response);
-pub type HandlerFn = fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Box<dyn Future<Output = ()> + Send>;
+pub type HandlerFn = fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Pin<Box<dyn Future<Output = ()> + 'static>>;
 pub type Handler = Box<HandlerFn>;
 pub type HandlerPtr =  Box<dyn Future<Output = ()>>;
 pub struct Route {
