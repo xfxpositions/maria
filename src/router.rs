@@ -50,7 +50,6 @@ pub async fn not_found_handler(response: Arc<Mutex<Response>>) -> HandlerPtr {
 }
 
 fn match_route_path(route_path: &String, request_path: &String) -> bool {
-            
     let route_parts: Vec<&str> = route_path.split("/").collect();
     let request_parts: Vec<&str> = request_path.split("/").collect();
 
@@ -63,7 +62,7 @@ fn match_route_path(route_path: &String, request_path: &String) -> bool {
             }
         }
     }
-    
+
     return state;
 }
 
@@ -110,8 +109,115 @@ fn extract_params_from_client_path(
 fn path_params(server_path: &String, client_path: &String) -> HashMap<String, String> {
     let path_params = extract_path_parameters(&server_path);
     let params = extract_params_from_client_path(&client_path, path_params);
-    
+
     return params;
+}
+
+pub async fn handle_top_level_handlers(
+    handlers: Vec<Vec<Handler>>,
+    res: Arc<Mutex<Response>>,
+    req: Arc<Mutex<Request>>,
+) {
+    let response_lock = res.lock().await;
+
+    if handlers.len() > 0 {
+        for handlers in handlers.iter() {
+            for handler in handlers.iter() {
+                if !response_lock.finish {
+                    let cloned_response = Arc::clone(&res);
+                    let cloned_request = Arc::clone(&req);
+
+                    let handler_fn: Pin<Box<dyn Future<Output = ()> + Send>> =
+                        Box::into_pin(handler(cloned_request, cloned_response));
+                    handler_fn.await;
+                }
+            }
+        }
+    }
+}
+
+pub async fn handle_route_handlers(
+    routes: &mut Vec<Route>,
+    res: Arc<Mutex<Response>>,
+    req: Arc<Mutex<Request>>,
+) {
+    {
+        
+    }
+    let mut not_found = true;
+    let mut cloned_response = res.clone();
+    let mut cloned_request = req.clone();
+
+
+    {
+        let response_lock = res.lock().await;
+        let mut request_lock = cloned_request.lock().await;
+        
+        for route in routes.iter_mut() {
+            let params = path_params(&route.path, &request_lock.path);
+            request_lock.params = params;
+    
+            if route.path == "*"
+                || request_lock.path == route.path
+                || match_route_path(&route.path, &request_lock.path)
+            {
+                if route.method == HttpMethod::ALL || request_lock.method == route.method {
+                    not_found = false;
+                    for handler in route.handlers.iter_mut() {
+                        if !response_lock.finish {
+                            let cloned_response = Arc::clone(&res);
+                            let cloned_request = Arc::clone(&req);
+    
+                            //Box::into_pin(handler(request_base.clone(), response_base.clone()).await).await;
+                            Box::into_pin(Box::into_pin(Box::new(handler))(
+                                cloned_request,
+                                cloned_response,
+                            ))
+                            .await;
+                        }
+                    }
+                } else {
+                    not_found = false;
+                    async fn handler(
+                        request: Arc<Mutex<Request>>,
+                        response: Arc<Mutex<Response>>,
+                    ) -> HandlerPtr {
+                        Box::new(async move {
+                            let mut response_locked = response.lock().await;
+                            let request_locked = request.lock().await;
+    
+                            let body = format!(
+                                "No avaible path for {} method, you can try another methods",
+                                request_locked.method.to_string()
+                            );
+                            response_locked.send_text(body.as_str());
+                        })
+                    }
+    
+                    let cloned_response = Arc::clone(&res);
+                    let cloned_request = Arc::clone(&req);
+    
+                    Box::into_pin(handler(cloned_request, cloned_response).await).await;
+                }
+            }
+        }
+    }
+    
+    //404 handler
+    if not_found {
+        Box::into_pin(not_found_handler(cloned_response).await).await;
+    }
+}
+async fn end_stream(stream: &mut TcpStream, response: Arc<Mutex<Response>>) {
+    let buffer = {
+        let lock: futures::lock::MutexGuard<'_, Response> = response.lock().await;
+        lock.raw_string.as_bytes().to_vec()
+    };
+    stream.write(&buffer).await.unwrap();
+    stream.flush().await.unwrap();
+    stream.shutdown().await.unwrap_or_else(|e| {
+        eprintln!("Error while shutting down stream: {:?}", e);
+    });
 }
 
 pub struct Router {
@@ -151,104 +257,36 @@ impl Router {
         }
     }
 
-    
-
     pub async fn handle_request(&mut self, stream: &mut tokio::net::TcpStream) {
-        
-
-        
 
         let req: Request = parse_buffer(stream).await.unwrap();
-        let request_base = Arc::new(Mutex::new(req));
         let res = Response::new("qwe".to_string(), vec!["qweqwe".to_string()]);
-        let res2 = Response::new("qwe".to_string(), vec!["qweqwe".to_string()]);
-
-        let deneme = Arc::new(tokio::sync::Mutex::new(res2));
-
+    
+        let request_base = Arc::new(Mutex::new(req));
         let response_base = Arc::new(Mutex::new(res));
+    
+        let res_clone = Arc::clone(&response_base);
+        let req_clone = Arc::clone(&request_base);
+    
+        let handle_top_level_handlers_task = handle_top_level_handlers(
+            self.top_level_handlers.clone(),
+            res_clone.clone(),
+            req_clone.clone(),
+        );
+    
+        let handle_route_handlers_task = handle_route_handlers(&mut self.routes, res_clone.clone(), req_clone.clone());
 
-        let mut not_found = true;
-        let a: Arc<Mutex<Response>> = response_base.clone();
-        let locked_response = deneme.lock().await;
-        //top level handlers
-        if self.top_level_handlers.len() > 0 {
-            for handlers in self.top_level_handlers.iter() {
-                for handler in handlers.iter() {
-                    if !locked_response.finish {
-                        let zzz = "zzz";
-                        let handler_fn: Pin<Box<dyn Future<Output = ()> + Send>> =
-                            Box::into_pin(handler(request_base.clone(), response_base.clone()));
-                        handler_fn.await;
-                    }
-                }
-            }
+        let end_stream_task = end_stream(stream, response_base);
+    
+        // tokio::join! işlevini kaldırıyoruz, yerine tokio::select! ile handle_top_level_handlers_task,
+        // handle_route_handlers_task ve end_stream_task task'larının tamamının bitmesini bekliyoruz.
+        tokio::select! {
+            _ = handle_route_handlers_task => (),
+            // _ = end_stream_task => (),
         }
-
-
-       
-
-        let a = request_base.lock().await;
-        let mut request = Arc::into_inner(a.into()).unwrap();
-
-        for route in self.routes.iter_mut() {
-            let params = path_params(&route.path, &request.path);
-            request.params = params;
-            
-            if route.path == "*"
-                || request.path == route.path
-                || match_route_path(&route.path, &request.path)
-            {
-                if route.method == HttpMethod::ALL || request.method == route.method {
-                    not_found = false;
-                    for handler in route.handlers.iter_mut() {
-                        if !locked_response.finish {
-                            let a = "qwe";
-
-
-                            //Box::into_pin(handler(request_base.clone(), response_base.clone()).await).await;
-                            Box::into_pin(Box::into_pin(Box::new(handler))(
-                                request_base.clone(),
-                                response_base.clone(),
-                            ))
-                            .await;
-                        }
-                    }
-                } else {
-                    not_found = false;
-                    async fn handler(
-                        request: Arc<Mutex<Request>>,
-                        response: Arc<Mutex<Response>>,
-                    ) -> HandlerPtr {
-                        Box::new(async move {
-                            let mut response_locked = response.lock().await;
-                            let request_locked = request.lock().await;
-
-                            let body = format!(
-                                "No avaible path for {} method, you can try another methods",
-                                request_locked.method.to_string()
-                            );
-                            response_locked.send_text(body.as_str());
-                        })
-                    }
-
-                    Box::into_pin(handler(request_base.clone(), response_base.clone()).await).await;
-                }
-            }
-        }
-        //404 handler
-        if not_found {
-            Box::into_pin(not_found_handler(response_base.clone()).await).await;
-        }
-
-        stream
-            .write(locked_response.raw_string.as_bytes())
-            .await
-            .unwrap();
-        stream.flush().await.unwrap();
+    
+        println!("All tasks completed.");
     }
-
-
-
 
     pub fn set_render_path(&mut self, path: &str) {
         self.render_path = path.to_string();
@@ -274,7 +312,7 @@ impl Router {
             handlers.push(Box::new(handler_fn));
         }
 
-        let route = Route {
+            let route = Route {
             path: path.to_string(),
             method: HttpMethod::GET,
             handlers: handlers,
