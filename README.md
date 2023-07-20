@@ -9,23 +9,28 @@
 - [x] Router
 - [x] Json handle
 - [x] Handler
-- [ ] Traits
-- [ ] Multithreading
+- [x] Async
+- [x] Traits
+- [ ? ] Multithreading
 
 ## Examples
 - Hello world example
 ```rust
 use maria::{Router,Request,Response};
 
+#[tokio::main]
 fn main(){
     let mut router = Router::new();
     
-    fn hello(req: &mut Request, res: &mut Response){
-        res.send_text("Hello from maria.rs");
+    fn home(req_base: Arc<Mutex<Request>>, res_base: Arc<Mutex<Response>>) -> HandlerPtr {
+        Box::new(async move {
+            let mut res = res_base.lock().await;
+            res.send_html("<h1>I fuckin did it</h1>");
+        })
     }
-    router.get("/",vec![hello]);
+    router.get("/",vec![home]);
     
-    router.listen(1002);
+    router.listen(1002).await;
     //that's it!
 }
 ```
