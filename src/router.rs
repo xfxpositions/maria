@@ -243,7 +243,6 @@ impl Router {
 
                     tokio::spawn(async move {
                         let mut lock = s.lock().await;
-
                         lock.handle_request(&mut stream).await;
                     });
                 }
@@ -276,7 +275,9 @@ impl Router {
         // tokio::join! işlevini kaldırıyoruz, yerine tokio::select! ile handle_top_level_handlers_task,
         // handle_route_handlers_task ve end_stream_task task'larının tamamının bitmesini bekliyoruz.
 
-        tokio::join!(handle_route_handlers_task, end_stream_task);
+        //tokio::join!(handle_route_handlers_task, end_stream_task);
+        handle_route_handlers_task.await;
+        end_stream_task.await;
 
         println!("All tasks completed.");
     }
