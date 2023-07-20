@@ -1,14 +1,14 @@
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum HttpMethod {
     GET,
     POST,
     PUT,
     DELETE,
     UNKNOWN,
-    ALL
+    ALL,
 }
 impl HttpMethod {
-    pub fn from_string(string:&str)->HttpMethod{
+    pub fn from_string(string: &str) -> HttpMethod {
         match string {
             "GET" => HttpMethod::GET,
             "POST" => HttpMethod::POST,
@@ -18,7 +18,7 @@ impl HttpMethod {
             _ => HttpMethod::UNKNOWN,
         }
     }
-    pub fn to_string(&self)->String{
+    pub fn to_string(&self) -> String {
         match self {
             Self::GET => "GET".to_string(),
             Self::POST => "POST".to_string(),

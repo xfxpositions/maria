@@ -1,0 +1,50 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'maria'",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=maria"],
+        "filter": {
+          "name": "maria",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'maria'",
+      "cargo": {
+        "args": ["build", "--bin=maria", "--package=maria"],
+        "filter": {
+          "name": "maria",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'maria'",
+      "cargo": {
+        "args": ["test", "--no-run", "--bin=maria", "--package=maria"],
+        "filter": {
+          "name": "maria",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

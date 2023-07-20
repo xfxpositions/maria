@@ -10,7 +10,6 @@ impl StatusCode {
             StatusCode::Ok => 200,
             StatusCode::NotFound => 404,
             StatusCode::BadRequest => 401,
-            _ => 200,
         }
     }
 }

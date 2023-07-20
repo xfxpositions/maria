@@ -11,7 +11,6 @@ pub fn parse_headers(
         String,
         String,
         Option<HashMap<String, String>>,
-
     ),
     String,
 > {
@@ -85,7 +84,6 @@ pub fn parse_headers(
     ))
 }
 
-
 fn parse_query_params(query_string: &str) -> HashMap<String, String> {
     let mut result = HashMap::new();
     for pair in query_string.split('&') {
@@ -103,7 +101,6 @@ fn parse_query_pair(pair: &str) -> Option<(String, String)> {
     Some((name, value))
 }
 
-
 #[derive(Debug)]
 pub struct Request {
     pub path: String,
@@ -114,11 +111,11 @@ pub struct Request {
     pub body: String,
     pub raw_string: String,
     pub queries: Option<HashMap<String, String>>,
-    pub params: HashMap<String, String>
+    pub params: HashMap<String, String>,
 }
 impl Request {
     pub fn new(request_string: String) -> Request {
-        let (first_line, headers, headers_str, body,queries) =
+        let (first_line, headers, headers_str, body, queries) =
             parse_headers(request_string.to_string()).unwrap();
         return Request {
             method: HttpMethod::from_string(first_line.0.as_str()),
@@ -128,12 +125,12 @@ impl Request {
             headers_raw: headers_str,
             body: body,
             raw_string: request_string,
-            queries:queries,
-            params: HashMap::new()
+            queries: queries,
+            params: HashMap::new(),
         };
     }
 
-    pub fn get_query(&self,query_name: &str) -> Option<String> {
+    pub fn get_query(&self, query_name: &str) -> Option<String> {
         if let Some(query_params) = &self.queries {
             if let Some(query_value) = query_params.get(query_name) {
                 return Some(query_value.to_owned());
