@@ -1,6 +1,6 @@
 extern crate maria;
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use futures::lock::Mutex;
 use maria::{HandlerPtr, Request, Response, Router};
@@ -9,8 +9,15 @@ use maria::{HandlerPtr, Request, Response, Router};
 async fn main() {
     let mut router = Router::new();
 
+    fn wait(req_base: Arc<Mutex<Request>>, res_base: Arc<Mutex<Response>>) -> HandlerPtr {
+        Box::new(async move {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        })
+    }
     fn query(req_base: Arc<Mutex<Request>>, res_base: Arc<Mutex<Response>>) -> HandlerPtr {
         Box::new(async move {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+
             let req = req_base.lock().await;
             let mut res = res_base.lock().await;
 
@@ -23,5 +30,5 @@ async fn main() {
 
     router.get("/test/:id", vec![query]);
 
-    async_std::task::block_on(router.listen(1002));
+   router.listen(1002).await;
 }

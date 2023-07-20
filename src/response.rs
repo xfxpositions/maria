@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use serde::Serialize;
 
-use crate::types::{ContentType, StatusCode};
+use crate::{types::{ContentType, StatusCode}, response};
 #[derive(Debug)]
 pub struct Response {
     pub status_code: u16,
@@ -58,6 +58,7 @@ impl Response {
             headers_str,
             self.body
         );
+        println!("response str is {:?}", response_str);
         self.raw_string = response_str;
     }
     fn send_setup(&mut self) {
