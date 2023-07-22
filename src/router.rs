@@ -2,12 +2,13 @@ pub use crate::Request;
 pub use crate::Response;
 
 pub use crate::types::{ContentType, HttpMethod, StatusCode};
-use futures::lock::Mutex;
+use tokio::sync::Mutex;
 use std::collections::HashMap;
 use std::error::Error;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener as AsyncTcpListener, TcpStream};
@@ -206,7 +207,7 @@ pub async fn handle_route_handlers(
 async fn end_stream(stream: &mut TcpStream, response: Arc<Mutex<Response>>) {
     println!("end stream");
     let buffer = {
-        let lock: futures::lock::MutexGuard<'_, Response> = response.lock().await;
+        let lock: tokio::sync::MutexGuard<'_, Response> = response.lock().await;
         lock.raw_string.as_bytes().to_vec()
     };
     println!("buffer is {:?}", buffer);
@@ -241,13 +242,14 @@ impl Router {
                 while let Ok((mut stream, _)) = listener.accept().await {
                     let s = d.clone();
 
-                    tokio::spawn(async move {
+                    tokio::task::spawn(async move {
                         let mut lock = s.lock().await;
                         lock.handle_request(&mut stream).await;
                     });
+
                 }
             }
-            Err(e) => panic!("Port error {:?}", e),
+            Err(e) => panic!("Listening error {:?}", e),
         }
     }
 
@@ -276,6 +278,8 @@ impl Router {
         // handle_route_handlers_task ve end_stream_task task'larının tamamının bitmesini bekliyoruz.
 
         //tokio::join!(handle_route_handlers_task, end_stream_task);
+
+        handle_top_level_handlers_task.await;
         handle_route_handlers_task.await;
         end_stream_task.await;
 

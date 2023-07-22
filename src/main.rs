@@ -2,7 +2,7 @@ extern crate maria;
 
 use std::{sync::Arc, time::Duration};
 
-use futures::lock::Mutex;
+use tokio::sync::Mutex;
 use maria::{HandlerPtr, Request, Response, Router};
 
 #[tokio::main]
@@ -32,12 +32,20 @@ async fn main() {
     fn home(req_base: Arc<Mutex<Request>>, res_base: Arc<Mutex<Response>>) -> HandlerPtr {
         Box::new(async move {
             let mut res = res_base.lock().await;
-            let html_text = "<h1>I fuckin did it</h1>";
+            let html_text = "<h1>hello</h1>";
             res.send_html(html_text);
         })
     }
 
     router.get("/", vec![home]);
+
+    fn meryem(request: Arc<Mutex<Request>>, response: Arc<Mutex<Response>>) -> HandlerPtr{
+        Box::new(async move{
+            let mut res = response.lock().await;
+            res.send_html("<h1>Meryem pasha</h1>");
+        })
+    }
+    router.get("/meryem", vec![meryem]);
 
    router.listen(1002).await;
 }
