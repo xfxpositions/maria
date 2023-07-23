@@ -1,51 +1,37 @@
+use std::sync::Arc;
+
+use maria::{Router, Response, Request, HandlerPtr};
+use mongodb::Client;
+use tokio::sync::Mutex;
+
 extern crate maria;
 
-use std::{sync::Arc, time::Duration};
-
-use tokio::sync::Mutex;
-use maria::{HandlerPtr, Request, Response, Router};
-
 #[tokio::main]
-async fn main() {
-    let mut router = Router::new();
+async fn main(){
+    let db_uri = "";
+    let client = mongodb::Client::with_uri_str(db_uri).await.unwrap(); 
+    let db = Arc::new(client.database("test"));
 
-    fn wait(req_base: Arc<Mutex<Request>>, res_base: Arc<Mutex<Response>>) -> HandlerPtr {
-        Box::new(async move {
-            tokio::time::sleep(Duration::from_secs(5)).await;
-        })
-    }
-    fn query(req_base: Arc<Mutex<Request>>, res_base: Arc<Mutex<Response>>) -> HandlerPtr {
-        Box::new(async move {
-
-            let req = req_base.lock().await;
-            let mut res = res_base.lock().await;
-
-            println!("{:?}", &req.path);
-            let queries = &req.queries;
-            println!("{:?}", queries);
-            res.send_text(format!("given id is => {:?}", req.params.get("id")).as_str());
-        })
-    }
-
-    router.get("/test/:id", vec![wait, query]);
-
-    fn home(req_base: Arc<Mutex<Request>>, res_base: Arc<Mutex<Response>>) -> HandlerPtr {
-        Box::new(async move {
-            let mut res = res_base.lock().await;
-            let html_text = "<h1>hello</h1>";
-            res.send_html(html_text);
-        })
-    }
-
-    router.get("/", vec![home]);
-
-    fn meryem(request: Arc<Mutex<Request>>, response: Arc<Mutex<Response>>) -> HandlerPtr{
+    let get_db = move ||{
+        db.clone()
+    };
+    let deneme2 = move |res: Arc<Mutex<Request>>, req: Arc<Mutex<Response>>|{
         Box::new(async move{
-            let mut res = response.lock().await;
-            res.send_html("<h1>Meryem pasha</h1>");
+            let db = get_db();
+        })
+    };
+    
+    fn deneme()-> HandlerPtr{
+        let db = get_db();
+        Box::new(async move{
+            
         })
     }
-    router.get("/meryem", vec![meryem]);
 
-   router.listen(1002).await;
+    let mut router = Router::new();
+    
+    router.get("/", vec![deneme2]);
+    
+    
+    router.listen(8080).await;
 }
