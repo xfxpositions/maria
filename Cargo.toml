@@ -2,6 +2,8 @@
 name = "maria"
 version = "0.7.0"
 edition = "2021"
+license = "MIT"
+description = "a simple expressjs like web framework builtin rust"
 
 
 [profile.release]

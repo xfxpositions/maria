@@ -1,6 +1,4 @@
-use maria::{Router, Response, Request, HandlerPtr, HandlerFn};
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use maria::{Router, Response, Request, HandlerFn, Mutex, Arc};
 
 extern crate maria;
 
