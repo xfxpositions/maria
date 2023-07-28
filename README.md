@@ -9,8 +9,9 @@
 - [x] Router
 - [x] Json handle
 - [x] Handler
-- [ ] Traits
-- [ ] Multithreading
+- [x] Async
+- [x] Traits
+- [ ? ] Multithreading
 
 ## Examples
 
@@ -34,6 +35,7 @@ async fn main(){
     let mut router = Router::new();
 
     router.get("/", vec![home]);
+
 
     //that's it!
     router.listen(8080).await;
