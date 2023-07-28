@@ -1,7 +1,5 @@
 use maria::{Router, Response, Request, HandlerFn, Mutex, Arc};
 
-extern crate maria;
-
 #[tokio::main]
 async fn main(){
 
