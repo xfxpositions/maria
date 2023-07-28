@@ -1,37 +1,25 @@
+use maria::{Router, Response, Request, HandlerPtr, HandlerFn};
 use std::sync::Arc;
-
-use maria::{Router, Response, Request, HandlerPtr};
-use mongodb::Client;
 use tokio::sync::Mutex;
 
 extern crate maria;
 
 #[tokio::main]
 async fn main(){
-    let db_uri = "";
-    let client = mongodb::Client::with_uri_str(db_uri).await.unwrap(); 
-    let db = Arc::new(client.database("test"));
 
-    let get_db = move ||{
-        db.clone()
-    };
-    let deneme2 = move |res: Arc<Mutex<Request>>, req: Arc<Mutex<Response>>|{
+    //define first handler
+    let home: HandlerFn = Arc::new(move |req: Arc<Mutex<Request>>, res: Arc<Mutex<Response>>|{
         Box::new(async move{
-            let db = get_db();
+            let mut res = res.lock().await;
+            res.send_html("Hello from maria.rs!");
         })
-    };
+    });
     
-    fn deneme()-> HandlerPtr{
-        let db = get_db();
-        Box::new(async move{
-            
-        })
-    }
-
+    //create a new router for our app
     let mut router = Router::new();
     
-    router.get("/", vec![deneme2]);
-    
-    
+    router.get("/", vec![home]);
+
+    //that's it!
     router.listen(8080).await;
 }

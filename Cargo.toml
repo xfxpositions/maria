@@ -1,9 +1,13 @@
 [package]
 name = "maria"
-version = "0.5.0"
+version = "0.7.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
 
 [dependencies]
 mongodb = "2.6.0"

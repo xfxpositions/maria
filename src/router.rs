@@ -216,8 +216,9 @@ async fn end_stream(stream: &mut TcpStream, response: Arc<Mutex<Response>>) {
 pub async fn handle_request(top_level_handlers_base: Arc<Mutex<Vec<Vec<Handler>>>>, routes_base: Arc<Mutex<Vec<Route>>>, stream: &mut tokio::net::TcpStream) {
     let req: Request = parse_buffer(stream).await.unwrap();
     let res = Response::new("qwe".to_string(), vec!["qweqwe".to_string()]);
-    let routes_lock = routes_base.lock().await;
-    let routes = routes_lock.to_vec();
+    let mut routes_lock = routes_base.lock().await;
+
+    let routes = routes_lock.drain(..).collect();
     drop(routes_lock);
 
 
@@ -230,7 +231,7 @@ pub async fn handle_request(top_level_handlers_base: Arc<Mutex<Vec<Vec<Handler>>
 
     let res_clone = Arc::clone(&response_base);
     let req_clone = Arc::clone(&request_base);
-
+    
     let handle_top_level_handlers_task = handle_top_level_handlers(
         top_level_handlers.clone(),
         res_clone.clone(),
@@ -378,9 +379,10 @@ pub fn pack_handler(func: Handler) -> Box<Handler> {
 }
 //pub type Handler = fn(req:&mut Request,res:&mut Response);
 pub type HandlerFn =
-    fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Box<dyn Future<Output = ()> + Send + 'static>;
+    Arc<dyn Fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Box<dyn Future<Output = ()> + Send + 'static> + Sync + Send>;
 pub type Handler = Box<HandlerFn>;
 pub type HandlerPtr = Box<dyn Future<Output = ()> + Send + 'static>;
+
 
 #[derive(Clone)]
 pub struct Route {
