@@ -8,6 +8,7 @@ homepage = "https://xfxpositions.github.io/maria/"
 documentation = "https://docs.rs/maria"
 repository = "https://github.com/xfxpositions/maria"
 readme = "README.md"
+exclude = ["src/main.rs"]
 
 [profile.release]
 lto = true
