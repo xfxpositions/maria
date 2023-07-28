@@ -11,7 +11,7 @@
 - [x] Handler
 - [x] Async
 - [x] Traits
-- [ ? ] Multithreading
+- [x] Multithreading
 
 ## Examples
 
@@ -41,5 +41,18 @@ async fn main(){
     router.listen(8080).await;
 }
 ```
+
+# Release notes 
+## 0.7.4
+
+### What's new?
+
+   - New closure type handlers.
+   - Some quick deadlock fixes.
+   - Fully multithreded.
+   - Cargo.toml ready to be publish!
+   - Some warning fixes.
+
+
 
 ### /examples will be avaible in the future.
