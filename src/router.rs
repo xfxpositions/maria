@@ -8,7 +8,6 @@ use std::error::Error;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener as AsyncTcpListener, TcpStream};
@@ -134,7 +133,6 @@ pub async fn handle_top_level_handlers(
     res: Arc<Mutex<Response>>,
     req: Arc<Mutex<Request>>,
 ) {
-    let response_lock = res.lock().await;
 
     if handlers.len() > 0 {
         for handlers in handlers.iter() {
@@ -275,7 +273,7 @@ impl Router {
             top_level_handlers: vec![],
         }
     }
-   pub async fn listen(mut self, port: u32) {
+   pub async fn listen(self, port: u32) {
     let hostname = format!("127.0.0.1:{}", port.to_string());
     let listener = AsyncTcpListener::bind(hostname).await;
     //let d = Arc::new(Mutex::new(self));
