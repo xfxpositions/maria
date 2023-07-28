@@ -14,24 +14,31 @@
 - [ ? ] Multithreading
 
 ## Examples
+
 - Hello world example
+
 ```rust
-use maria::{Router,Request,Response};
+use maria::{Router, Response, Request, HandlerFn, Mutex, Arc};
 
 #[tokio::main]
-fn main(){
-    let mut router = Router::new();
-    
-    fn home(req_base: Arc<Mutex<Request>>, res_base: Arc<Mutex<Response>>) -> HandlerPtr {
-        Box::new(async move {
-            let mut res = res_base.lock().await;
-            res.send_html("<h1>I fuckin did it</h1>");
+async fn main(){
+
+    //define first handler
+    let home: HandlerFn = Arc::new(move |req: Arc<Mutex<Request>>, res: Arc<Mutex<Response>>|{
+        Box::new(async move{
+            let mut res = res.lock().await;
+            res.send_html("Hello from maria.rs!");
         })
-    }
-    router.get("/",vec![home]);
-    
-    router.listen(1002).await;
+    });
+
+    //create a new router for our app
+    let mut router = Router::new();
+
+    router.get("/", vec![home]);
+
+
     //that's it!
+    router.listen(8080).await;
 }
 ```
 

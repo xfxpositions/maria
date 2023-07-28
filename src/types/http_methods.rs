@@ -1,4 +1,6 @@
 #[derive(Debug, PartialEq)]
+
+#[derive(Clone, Copy)]
 pub enum HttpMethod {
     GET,
     POST,

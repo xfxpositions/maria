@@ -2,7 +2,7 @@ pub use crate::Request;
 pub use crate::Response;
 
 pub use crate::types::{ContentType, HttpMethod, StatusCode};
-use futures::lock::Mutex;
+use tokio::sync::Mutex;
 use std::collections::HashMap;
 use std::error::Error;
 use std::future::Future;
@@ -19,7 +19,6 @@ pub async fn parse_buffer(stream: &mut TcpStream) -> Result<Request, Box<dyn Err
         let mut chunk = vec![0; 1024]; // Create a temporary chunk buffer
         match stream.read(&mut chunk).await {
             Ok(bytes_read) if bytes_read > 0 => {
-                println!("chunk is => {:?}", bytes_read);
                 chunk.resize(bytes_read, 0);
                 buffer.extend_from_slice(&chunk);
 
@@ -134,7 +133,6 @@ pub async fn handle_top_level_handlers(
     res: Arc<Mutex<Response>>,
     req: Arc<Mutex<Request>>,
 ) {
-    let response_lock = res.lock().await;
 
     if handlers.len() > 0 {
         for handlers in handlers.iter() {
@@ -151,7 +149,7 @@ pub async fn handle_top_level_handlers(
 }
 
 pub async fn handle_route_handlers(
-    routes: &mut Vec<Route>,
+    mut routes:  Vec<Route>,
     res: Arc<Mutex<Response>>,
     req: Arc<Mutex<Request>>,
 ) {
@@ -204,16 +202,59 @@ pub async fn handle_route_handlers(
     }
 }
 async fn end_stream(stream: &mut TcpStream, response: Arc<Mutex<Response>>) {
-    println!("end stream");
     let buffer = {
-        let lock: futures::lock::MutexGuard<'_, Response> = response.lock().await;
+        let lock: tokio::sync::MutexGuard<'_, Response> = response.lock().await;
         lock.raw_string.as_bytes().to_vec()
     };
-    println!("buffer is {:?}", buffer);
     stream.write(&buffer).await.unwrap();
     stream.flush().await.unwrap();
-    println!("stream flushed");
 }
+//top level handers
+//routes
+pub async fn handle_request(top_level_handlers_base: Arc<Mutex<Vec<Vec<Handler>>>>, routes_base: Arc<Mutex<Vec<Route>>>, stream: &mut tokio::net::TcpStream) {
+    let req: Request = parse_buffer(stream).await.unwrap();
+    let res = Response::new("qwe".to_string(), vec!["qweqwe".to_string()]);
+    let mut routes_lock = routes_base.lock().await;
+
+    let routes = routes_lock.drain(..).collect();
+    drop(routes_lock);
+
+
+    let top_level_handlers_lock = top_level_handlers_base.lock().await;
+    let top_level_handlers = top_level_handlers_lock.to_vec();
+    drop(top_level_handlers_lock);
+
+    let request_base = Arc::new(Mutex::new(req));
+    let response_base = Arc::new(Mutex::new(res));
+
+    let res_clone = Arc::clone(&response_base);
+    let req_clone = Arc::clone(&request_base);
+    
+    let handle_top_level_handlers_task = handle_top_level_handlers(
+        top_level_handlers.clone(),
+        res_clone.clone(),
+        req_clone.clone(),
+    );
+
+    let handle_route_handlers_task =
+        handle_route_handlers(routes, res_clone.clone(), req_clone.clone());
+
+    let end_stream_task = end_stream(stream, response_base);
+
+    handle_top_level_handlers_task.await;
+    handle_route_handlers_task.await;
+    end_stream_task.await;
+
+}
+
+
+#[derive(Clone)]
+pub struct Route {
+    pub path: String,
+    pub method: HttpMethod,
+    pub handlers: Vec<Handler>,
+}
+
 
 pub struct Router {
     pub routes: Vec<Route>,
@@ -232,55 +273,30 @@ impl Router {
             top_level_handlers: vec![],
         }
     }
-    pub async fn listen(self, port: u32) {
-        let d = Arc::new(Mutex::new(self));
-        let hostname = format!("127.0.0.1:{}", port.to_string());
-        let listener = AsyncTcpListener::bind(hostname).await;
-        match listener {
-            Ok(listener) => {
-                while let Ok((mut stream, _)) = listener.accept().await {
-                    let s = d.clone();
+   pub async fn listen(self, port: u32) {
+    let hostname = format!("127.0.0.1:{}", port.to_string());
+    let listener = AsyncTcpListener::bind(hostname).await;
+    //let d = Arc::new(Mutex::new(self));
+    let top_level_handlers = Arc::new(Mutex::new(self.top_level_handlers));
+    let routes = Arc::new(Mutex::new(self.routes)); // Wrap routes in Arc<Mutex<_>>
 
-                    tokio::spawn(async move {
-                        let mut lock = s.lock().await;
-                        lock.handle_request(&mut stream).await;
-                    });
-                }
-            }
-            Err(e) => panic!("Port error {:?}", e),
+    match listener {
+        Ok(listener) => {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                let c = Arc::clone(&routes);
+                let d = Arc::clone(&top_level_handlers);
+                tokio::task::spawn(async move {
+                    handle_request(d, c, &mut stream).await;
+
+                });
+            } 
         }
+        Err(e) => panic!("Listening error {:?}", e),
     }
+}
 
-    pub async fn handle_request(&mut self, stream: &mut tokio::net::TcpStream) {
-        let req: Request = parse_buffer(stream).await.unwrap();
-        let res = Response::new("qwe".to_string(), vec!["qweqwe".to_string()]);
 
-        let request_base = Arc::new(Mutex::new(req));
-        let response_base = Arc::new(Mutex::new(res));
-
-        let res_clone = Arc::clone(&response_base);
-        let req_clone = Arc::clone(&request_base);
-
-        let handle_top_level_handlers_task = handle_top_level_handlers(
-            self.top_level_handlers.clone(),
-            res_clone.clone(),
-            req_clone.clone(),
-        );
-
-        let handle_route_handlers_task =
-            handle_route_handlers(&mut self.routes, res_clone.clone(), req_clone.clone());
-
-        let end_stream_task = end_stream(stream, response_base);
-
-        // tokio::join! işlevini kaldırıyoruz, yerine tokio::select! ile handle_top_level_handlers_task,
-        // handle_route_handlers_task ve end_stream_task task'larının tamamının bitmesini bekliyoruz.
-
-        //tokio::join!(handle_route_handlers_task, end_stream_task);
-        handle_route_handlers_task.await;
-        end_stream_task.await;
-
-        println!("All tasks completed.");
-    }
+    
 
     pub fn set_render_path(&mut self, path: &str) {
         self.render_path = path.to_string();
@@ -291,6 +307,7 @@ impl Router {
     pub fn top_level_handler(&mut self, handlers: Vec<Handler>) {
         self.top_level_handlers.push(handlers);
     }
+
     pub fn all(&mut self, path: &str, handlers: Vec<Handler>) {
         let route = Route {
             path: path.to_string(),
@@ -314,7 +331,13 @@ impl Router {
         self.routes.push(route);
     }
 
-    pub fn post(&mut self, path: &str, handlers: Vec<Handler>) {
+    pub fn post(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
+        let mut handlers: Vec<Handler> = Vec::new();
+
+        for handler_fn in handler_functions {
+            handlers.push(Box::new(handler_fn));
+        }
+
         let route = Route {
             path: path.to_string(),
             method: HttpMethod::POST,
@@ -322,7 +345,14 @@ impl Router {
         };
         self.routes.push(route);
     }
-    pub fn put(&mut self, path: &str, handlers: Vec<Handler>) {
+
+    pub fn put(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
+        let mut handlers: Vec<Handler> = Vec::new();
+
+        for handler_fn in handler_functions {
+            handlers.push(Box::new(handler_fn));
+        }
+
         let route = Route {
             path: path.to_string(),
             method: HttpMethod::PUT,
@@ -330,7 +360,14 @@ impl Router {
         };
         self.routes.push(route);
     }
-    pub fn delete(&mut self, path: &str, handlers: Vec<Handler>) {
+    
+    pub fn delete(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
+        let mut handlers: Vec<Handler> = Vec::new();
+
+        for handler_fn in handler_functions {
+            handlers.push(Box::new(handler_fn));
+        }
+
         let route = Route {
             path: path.to_string(),
             method: HttpMethod::DELETE,
@@ -339,39 +376,14 @@ impl Router {
         self.routes.push(route);
     }
 
-    // pub fn static_handler(&mut self,path:&str,a:&str)->Handler{
-    //     self.static_paths.push(path.to_string());
-    //     fn handler(req:&mut Request,res:&mut Response){
-    //         let static_paths = res.static_paths.clone();
-    //         for dir_path in static_paths.iter(){
-    //             let path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + dir_path + &req.path;
-    //             let file_path = Path::new(&path);
-    //                 if file_path.is_file(){
-    //                     res.send_static_file(&path);
-    //                     res.finish = true;
-    //                 }else{
-    //                     res.send_text("DAYANAMIYORUM");
-    //                     res.finish = true;
-    //                 }
-    //         }
-    //         res.finish = true;
-    //     }
-    //     return handler;
-    // }
 }
 pub fn pack_handler(func: Handler) -> Box<Handler> {
     Box::new(func)
 }
+
+//old folk
 //pub type Handler = fn(req:&mut Request,res:&mut Response);
 pub type HandlerFn =
-    fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Box<dyn Future<Output = ()> + Send + 'static>;
+    Arc<dyn Fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Box<dyn Future<Output = ()> + Send + 'static> + Sync + Send>;
 pub type Handler = Box<HandlerFn>;
 pub type HandlerPtr = Box<dyn Future<Output = ()> + Send + 'static>;
-pub struct Route {
-    pub path: String,
-    pub method: HttpMethod,
-    pub handlers: Vec<Handler>,
-}
-impl Route {
-    pub fn new() {}
-}

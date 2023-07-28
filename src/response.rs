@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use serde::Serialize;
 
-use crate::{types::{ContentType, StatusCode}, response};
+use crate::types::{ContentType, StatusCode};
 #[derive(Debug)]
 pub struct Response {
     pub status_code: u16,
