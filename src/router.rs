@@ -243,15 +243,18 @@ pub async fn handle_request(top_level_handlers_base: Arc<Mutex<Vec<Vec<Handler>>
 
     let end_stream_task = end_stream(stream, response_base);
 
-    // tokio::join! işlevini kaldırıyoruz, yerine tokio::select! ile handle_top_level_handlers_task,
-    // handle_route_handlers_task ve end_stream_task task'larının tamamının bitmesini bekliyoruz.
-
-    //tokio::join!(handle_route_handlers_task, end_stream_task);
-
     handle_top_level_handlers_task.await;
     handle_route_handlers_task.await;
     end_stream_task.await;
 
+}
+
+
+#[derive(Clone)]
+pub struct Route {
+    pub path: String,
+    pub method: HttpMethod,
+    pub handlers: Vec<Handler>,
 }
 
 
@@ -306,6 +309,7 @@ impl Router {
     pub fn top_level_handler(&mut self, handlers: Vec<Handler>) {
         self.top_level_handlers.push(handlers);
     }
+
     pub fn all(&mut self, path: &str, handlers: Vec<Handler>) {
         let route = Route {
             path: path.to_string(),
@@ -329,7 +333,13 @@ impl Router {
         self.routes.push(route);
     }
 
-    pub fn post(&mut self, path: &str, handlers: Vec<Handler>) {
+    pub fn post(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
+        let mut handlers: Vec<Handler> = Vec::new();
+
+        for handler_fn in handler_functions {
+            handlers.push(Box::new(handler_fn));
+        }
+
         let route = Route {
             path: path.to_string(),
             method: HttpMethod::POST,
@@ -337,7 +347,14 @@ impl Router {
         };
         self.routes.push(route);
     }
-    pub fn put(&mut self, path: &str, handlers: Vec<Handler>) {
+
+    pub fn put(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
+        let mut handlers: Vec<Handler> = Vec::new();
+
+        for handler_fn in handler_functions {
+            handlers.push(Box::new(handler_fn));
+        }
+
         let route = Route {
             path: path.to_string(),
             method: HttpMethod::PUT,
@@ -345,7 +362,14 @@ impl Router {
         };
         self.routes.push(route);
     }
-    pub fn delete(&mut self, path: &str, handlers: Vec<Handler>) {
+    
+    pub fn delete(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
+        let mut handlers: Vec<Handler> = Vec::new();
+
+        for handler_fn in handler_functions {
+            handlers.push(Box::new(handler_fn));
+        }
+
         let route = Route {
             path: path.to_string(),
             method: HttpMethod::DELETE,
@@ -354,42 +378,14 @@ impl Router {
         self.routes.push(route);
     }
 
-    // pub fn static_handler(&mut self,path:&str,a:&str)->Handler{
-    //     self.static_paths.push(path.to_string());
-    //     fn handler(req:&mut Request,res:&mut Response){
-    //         let static_paths = res.static_paths.clone();
-    //         for dir_path in static_paths.iter(){
-    //             let path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + dir_path + &req.path;
-    //             let file_path = Path::new(&path);
-    //                 if file_path.is_file(){
-    //                     res.send_static_file(&path);
-    //                     res.finish = true;
-    //                 }else{
-    //                     res.send_text("DAYANAMIYORUM");
-    //                     res.finish = true;
-    //                 }
-    //         }
-    //         res.finish = true;
-    //     }
-    //     return handler;
-    // }
 }
 pub fn pack_handler(func: Handler) -> Box<Handler> {
     Box::new(func)
 }
+
+//old folk
 //pub type Handler = fn(req:&mut Request,res:&mut Response);
 pub type HandlerFn =
     Arc<dyn Fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Box<dyn Future<Output = ()> + Send + 'static> + Sync + Send>;
 pub type Handler = Box<HandlerFn>;
 pub type HandlerPtr = Box<dyn Future<Output = ()> + Send + 'static>;
-
-
-#[derive(Clone)]
-pub struct Route {
-    pub path: String,
-    pub method: HttpMethod,
-    pub handlers: Vec<Handler>,
-}
-impl Route {
-    pub fn new() {}
-}
