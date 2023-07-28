@@ -8,8 +8,12 @@
         Many of Rust frameworks can be too complex and hard to learn for
         developers which came from Nodejs enviroment. Maria highly influenced on
         <a href="" class="underline font-bold">Expressjs</a> framework, also
-        Maria has an easy syntax.
+        Maria has an easy syntaxxxx.
       </p>
+      <code
+        >warning: this page still in heavy construction. Document can be found
+        in <a href="https://docs.rs/maria">docs.rs</a>
+      </code>
     </div>
     <div class="flex-1">
       <div class="flex flex-row gap-3">
@@ -28,16 +32,28 @@ const currentExampleCode = ref("helloWorld");
 const exampleCodes = [
   {
     name: "helloWorld",
-    code: `use maria::{Router, Request, Response};
-let app = Router::new();
+    code: `use maria::{Router, Response, Request, HandlerFn, Mutex, Arc};
 
-fn hello_world(&mut req:Request, &mut res:Response){
-res.send_text("Hello world!");
+#[tokio::main]
+async fn main(){
+
+    //define first handler
+    let home: HandlerFn = Arc::new(move |req: Arc<Mutex<Request>>, res: Arc<Mutex<Response>>|{
+        Box::new(async move{
+            let mut res = res.lock().await;
+            res.send_html("Hello from maria.rs!");
+        })
+    });
+
+    //create a new router for our app
+    let mut router = Router::new();
+
+    router.get("/", vec![home]);
+
+
+    //that's it!
+    router.listen(8080).await;
 }
-
-app.get("/",vec![hello_world]);
-// That's it!
-
 `,
   },
 ];
