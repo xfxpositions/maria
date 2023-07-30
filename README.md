@@ -55,7 +55,7 @@ async fn main(){
 
 ## 0.7.4
 
-### What's new?
+### Ready to release!
 
 - New closure type handlers.
 - Some quick deadlock fixes.
