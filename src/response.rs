@@ -58,7 +58,6 @@ impl Response {
             headers_str,
             self.body
         );
-        println!("response str is {:?}", response_str);
         self.raw_string = response_str;
     }
     fn send_setup(&mut self) {

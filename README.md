@@ -9,8 +9,9 @@
 - [x] Router
 - [x] Json handle
 - [x] Handler
-- [ ] Traits
-- [ ] Multithreading
+- [x] Async
+- [x] Traits
+- [x] Multithreading
 
 ## Examples
 
@@ -35,9 +36,31 @@ async fn main(){
 
     router.get("/", vec![home]);
 
+
     //that's it!
     router.listen(8080).await;
 }
 ```
+
+# Release notes
+
+## 0.7.5
+
+### A quick bugfix?
+
+- The problem is that it drains the routes when it goes into the handling function.
+- But the drain is getting all inside the vec into another vec.
+- So this problem causes 404 after getting a response in route.
+- Also deleted a small debug log.
+
+## 0.7.4
+
+### What's new?
+
+- New closure type handlers.
+- Some quick deadlock fixes.
+- Fully multithreded.
+- Cargo.toml ready to be publish!
+- Some warning fixes.
 
 ### /examples will be avaible in the future.
