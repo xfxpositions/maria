@@ -42,17 +42,25 @@ async fn main(){
 }
 ```
 
-# Release notes 
+# Release notes
+
+## 0.7.5
+
+### A quick bugfix?
+
+- The problem is that it drains the routes when it goes into the handling function.
+- But the drain is getting all inside the vec into another vec.
+- So this problem causes 404 after getting a response in route.
+- Also deleted a small debug log.
+
 ## 0.7.4
 
-### What's new?
+### Ready to release!
 
-   - New closure type handlers.
-   - Some quick deadlock fixes.
-   - Fully multithreded.
-   - Cargo.toml ready to be publish!
-   - Some warning fixes.
-
-
+- New closure type handlers.
+- Some quick deadlock fixes.
+- Fully multithreded.
+- Cargo.toml ready to be publish!
+- Some warning fixes.
 
 ### /examples will be avaible in the future.

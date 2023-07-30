@@ -61,7 +61,6 @@ fn match_route_path(route_path: &String, request_path: &String) -> bool {
             }
         }
     }
-
     return state;
 }
 
@@ -76,6 +75,7 @@ fn extract_path_parameters(url: &String) -> HashMap<u32, String> {
             *part = &part[1..]; // Update the value in-place
             path_params.insert(index as u32, part.to_string());
         }
+        
     }
     path_params
 }
@@ -157,7 +157,6 @@ pub async fn handle_route_handlers(
     let cloned_response = res.clone();
     let cloned_request = req.clone();
 
-   
     for route in routes.iter_mut() {
         let mut request_lock = cloned_request.lock().await;
         let req_path = request_lock.path.clone();
@@ -214,9 +213,10 @@ async fn end_stream(stream: &mut TcpStream, response: Arc<Mutex<Response>>) {
 pub async fn handle_request(top_level_handlers_base: Arc<Mutex<Vec<Vec<Handler>>>>, routes_base: Arc<Mutex<Vec<Route>>>, stream: &mut tokio::net::TcpStream) {
     let req: Request = parse_buffer(stream).await.unwrap();
     let res = Response::new("qwe".to_string(), vec!["qweqwe".to_string()]);
-    let mut routes_lock = routes_base.lock().await;
-
-    let routes = routes_lock.drain(..).collect();
+    let routes_lock = routes_base.lock().await;
+    
+    let routes = routes_lock.clone();
+    
     drop(routes_lock);
 
 
