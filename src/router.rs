@@ -48,6 +48,7 @@ pub async fn not_found_handler(response: Arc<Mutex<Response>>) -> HandlerPtr {
     })
 }
 
+
 fn match_route_path(route_path: &String, request_path: &String) -> bool {
     let route_parts: Vec<&str> = route_path.split("/").collect();
     let request_parts: Vec<&str> = request_path.split("/").collect();
@@ -73,12 +74,14 @@ fn extract_path_parameters(url: &String) -> HashMap<u32, String> {
     for (index, part) in parts.iter_mut().enumerate() {
         if part.contains(':') {
             *part = &part[1..]; // Update the value in-place
+            
             path_params.insert(index as u32, part.to_string());
         }
         
     }
     path_params
 }
+// let a: Vec<&str> = part.split("*").collect();
 
 fn extract_params_from_client_path(
     url: &String,
@@ -94,7 +97,18 @@ fn extract_params_from_client_path(
         match item {
             Some(item) => {
                 if index as u32 == *item.0 {
-                    params.insert(item.1.to_string(), part.to_string());
+                    if item.1.contains("*") {
+                        let url_parts: Vec<&str> = url.split("*").collect();
+                        println!("{:?}", url_parts);
+                        let mut partss: Vec<&str> = url.split('/').collect();
+                        println!("rustin amk {}", *item.0);
+                        partss.drain(0..(*item.0 +1) as usize);
+                        let new_path = partss.join("/");
+                        params.insert(item.1.to_string(), new_path);
+                        break;
+                    }else{
+                        params.insert(item.1.to_string(), part.to_string());
+                    }
                 }
             }
             None => {
@@ -108,7 +122,6 @@ fn extract_params_from_client_path(
 fn path_params(server_path: &String, client_path: &String) -> HashMap<String, String> {
     let path_params = extract_path_parameters(&server_path);
     let params = extract_params_from_client_path(&client_path, path_params);
-
     return params;
 }
 

@@ -19,7 +19,7 @@ async fn main(){
     //create a new router for our app
     let mut router = Router::new();
     
-    router.get("/test/:123", vec![home]);
+    router.get("/test/:*testparam", vec![home]);
 
     //that's it!
     router.listen(8080).await;
