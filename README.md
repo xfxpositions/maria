@@ -44,6 +44,15 @@ async fn main(){
 
 # Release notes
 
+## 0.7.6
+
+### Path params wildcart added.
+
+- path params /:\*param_key added.
+- wildcart can take any of params
+- for example: file/:\*path -> file/folderpath/anotherfolder/file.txt
+- params: \*path: folderpath/anotherfolder/file.txt
+
 ## 0.7.5
 
 ### A quick bugfix?
