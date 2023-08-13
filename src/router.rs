@@ -98,10 +98,7 @@ fn extract_params_from_client_path(
             Some(item) => {
                 if index as u32 == *item.0 {
                     if item.1.contains("*") {
-                        let url_parts: Vec<&str> = url.split("*").collect();
-                        println!("{:?}", url_parts);
                         let mut partss: Vec<&str> = url.split('/').collect();
-                        println!("rustin amk {}", *item.0);
                         partss.drain(0..(*item.0 +1) as usize);
                         let new_path = partss.join("/");
                         params.insert(item.1.to_string(), new_path);
