@@ -44,6 +44,26 @@ async fn main(){
 
 # Release notes
 
+## 0.8.0
+
+### New handler! macro for defining handlers, a quick header changes
+
+- now you can define a handler with using handler! macro
+  example:
+
+- ```rust
+    let home: HandlerFn = handler!(_req, res, {
+        res.send_text("Hello world!");
+    })
+  ```
+
+- 2 Examples added
+- Basic function documentation added
+
+```
+
+- and that's done. also, documentation will come to next versions.
+
 ## 0.7.6
 
 ### Path params wildcart added.
@@ -73,3 +93,4 @@ async fn main(){
 - Some warning fixes.
 
 ### /examples will be avaible in the future.
+```
