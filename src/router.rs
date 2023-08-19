@@ -98,10 +98,7 @@ fn extract_params_from_client_path(
             Some(item) => {
                 if index as u32 == *item.0 {
                     if item.1.contains("*") {
-                        let url_parts: Vec<&str> = url.split("*").collect();
-                        println!("{:?}", url_parts);
                         let mut partss: Vec<&str> = url.split('/').collect();
-                        println!("rustin amk {}", *item.0);
                         partss.drain(0..(*item.0 +1) as usize);
                         let new_path = partss.join("/");
                         params.insert(item.1.to_string(), new_path);
@@ -286,6 +283,12 @@ impl Router {
             top_level_handlers: vec![],
         }
     }
+   /// function for listening the given port. returns future
+   /// # Example
+   /// ```rust
+   /// let mut router = Router::new();
+   /// router.listen(8080).await;
+   /// ```
    pub async fn listen(self, port: u32) {
     let hostname = format!("127.0.0.1:{}", port.to_string());
     let listener = AsyncTcpListener::bind(hostname).await;
@@ -310,7 +313,6 @@ impl Router {
 
 
     
-
     pub fn set_render_path(&mut self, path: &str) {
         self.render_path = path.to_string();
     }
@@ -329,6 +331,17 @@ impl Router {
         };
         self.routes.push(route);
     }
+    /// creates a get route to router.
+    /// first param is &str for param
+    /// second one is Vec<HandlerFn> for handlers
+    /// # Example
+    /// ```rust
+    /// let mut router = Router::new();
+    /// 
+    /// router.get("/", vec![handler1, handler2]);
+    /// 
+    /// ```
+    
     pub fn get(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
         let mut handlers: Vec<Handler> = Vec::new();
 
@@ -344,6 +357,16 @@ impl Router {
         self.routes.push(route);
     }
 
+    /// creates a post route to router.
+    /// first param is &str for param
+    /// second one is Vec<HandlerFn> for handlers
+    /// # Example
+    /// ```rust
+    /// let mut router = Router::new();
+    /// 
+    /// router.post("/post", vec![handler1, handler2]);
+    /// 
+    /// ``` 
     pub fn post(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
         let mut handlers: Vec<Handler> = Vec::new();
 
@@ -359,6 +382,17 @@ impl Router {
         self.routes.push(route);
     }
 
+
+    /// creates a put route to router.
+    /// first param is &str for param
+    /// second one is Vec<HandlerFn> for handlers
+    /// # Example
+    /// ```rust
+    /// let mut router = Router::new();
+    /// 
+    /// router.put("/put", vec![handler1, handler2]);
+    /// 
+    /// ```
     pub fn put(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
         let mut handlers: Vec<Handler> = Vec::new();
 
@@ -374,6 +408,16 @@ impl Router {
         self.routes.push(route);
     }
     
+    /// creates a delete route to router.
+    /// first param is &str for param
+    /// second one is Vec<HandlerFn> for handlers
+    /// # Example
+    /// ```rust
+    /// let mut router = Router::new();
+    /// 
+    /// router.delete("/", vec![handler1, handler2]);
+    /// 
+    /// ```
     pub fn delete(&mut self, path: &str, handler_functions: Vec<HandlerFn>) {
         let mut handlers: Vec<Handler> = Vec::new();
 
@@ -396,7 +440,11 @@ pub fn pack_handler(func: Handler) -> Box<Handler> {
 
 //old folk
 //pub type Handler = fn(req:&mut Request,res:&mut Response);
+/// function pointer for Handlers
 pub type HandlerFn =
     Arc<dyn Fn(Arc<Mutex<Request>>, Arc<Mutex<Response>>) -> Box<dyn Future<Output = ()> + Send + 'static> + Sync + Send>;
+    
+/// A box pointing to HandlerFn
 pub type Handler = Box<HandlerFn>;
+/// HandlerPtr, pointer type for Handlers returning 
 pub type HandlerPtr = Box<dyn Future<Output = ()> + Send + 'static>;
