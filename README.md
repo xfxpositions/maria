@@ -18,31 +18,44 @@
 - Hello world example
 
 ```rust
-use maria::{Router, Response, Request, HandlerFn, Mutex, Arc};
+use maria::{ Request, Response, Router, handler, HandlerFn, Arc, Mutex};
 
 #[tokio::main]
 async fn main(){
 
-    //define first handler
-    let home: HandlerFn = Arc::new(move |req: Arc<Mutex<Request>>, res: Arc<Mutex<Response>>|{
-        Box::new(async move{
-            let mut res = res.lock().await;
-            res.send_html("Hello from maria.rs!");
-        })
+    //defining first handler
+    let home: HandlerFn = handler!(_req, res, {
+        res.send_html("<h1>Hello from Maria!</h1>");
     });
 
-    //create a new router for our app
+    // init the router
     let mut router = Router::new();
 
+    // add our handler to router
     router.get("/", vec![home]);
 
-
-    //that's it!
+    // that's it!
     router.listen(8080).await;
 }
 ```
 
 # Release notes
+
+## 0.8.1
+
+### Router.r#use added.
+
+- I can't name as Router.use because Rust already has a keyword as use.
+- But you can use with Router.r#use();
+- Same as expressjs Router.use method.
+- You can define something for all methods and all paths
+- Example:
+- ```rs
+    router.r#use(vec![handler!(_req,_res,{
+        println!("Something has came!");
+    })]);
+  ```
+- Also, readme updated with new handler! usage
 
 ## 0.8.0
 
@@ -59,9 +72,6 @@ async fn main(){
 
 - 2 Examples added
 - Basic function documentation added
-
-```
-
 - and that's done. also, documentation will come to next versions.
 
 ## 0.7.6
@@ -91,6 +101,3 @@ async fn main(){
 - Fully multithreded.
 - Cargo.toml ready to be publish!
 - Some warning fixes.
-
-### /examples will be avaible in the future.
-```
