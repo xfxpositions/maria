@@ -176,8 +176,9 @@ pub async fn handle_route_handlers(
         drop(request_lock);
 
         if route.path == "*"
-            ||  req_path == route.path
+            || req_path == route.path
             || match_route_path(&route.path, &req_path)
+            || route.joker
         {
             if route.method == HttpMethod::ALL || req_method == route.method.to_string() {
                 not_found = false;
@@ -263,6 +264,8 @@ pub struct Route {
     pub path: String,
     pub method: HttpMethod,
     pub handlers: Vec<Handler>,
+    // Joker that means valid in every path
+    pub joker: bool
 }
 
 
@@ -328,6 +331,7 @@ impl Router {
             path: path.to_string(),
             method: HttpMethod::ALL,
             handlers: handlers,
+            joker: false
         };
         self.routes.push(route);
     }
@@ -353,6 +357,7 @@ impl Router {
             path: path.to_string(),
             method: HttpMethod::GET,
             handlers: handlers,
+            joker: false
         };
         self.routes.push(route);
     }
@@ -378,6 +383,7 @@ impl Router {
             path: path.to_string(),
             method: HttpMethod::POST,
             handlers: handlers,
+            joker: false
         };
         self.routes.push(route);
     }
@@ -404,6 +410,7 @@ impl Router {
             path: path.to_string(),
             method: HttpMethod::PUT,
             handlers: handlers,
+            joker: false
         };
         self.routes.push(route);
     }
@@ -429,6 +436,31 @@ impl Router {
             path: path.to_string(),
             method: HttpMethod::DELETE,
             handlers: handlers,
+            joker: false
+        };
+        self.routes.push(route);
+    }
+    /// Use for every path, every method
+    /// first param is Vec<HandlerFn> for handlers
+    /// # Example
+    /// ```rust
+    /// let mut router = Router::new();
+    /// 
+    /// router.use(vec![handler1, handler2]);
+    /// 
+    /// ```
+    pub fn r#use(&mut self, handler_functions: Vec<HandlerFn>) {
+        let mut handlers: Vec<Handler> = Vec::new();
+
+        for handler_fn in handler_functions {
+            handlers.push(Box::new(handler_fn));
+        }
+
+        let route = Route {
+            path: "/".to_string(),
+            method: HttpMethod::ALL,
+            handlers: handlers,
+            joker: true
         };
         self.routes.push(route);
     }
